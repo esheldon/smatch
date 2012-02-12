@@ -84,7 +84,7 @@ struct points* points_init(PyObject* raObj, PyObject* decObj, PyObject* radObj) 
         }
 
         pt->rad = *rad;
-        fprintf(stderr,"%lf %lf %lf %lf %lf %e\n", *ra, *dec, pt->x, pt->y, pt->z, pt->rad);
+        //fprintf(stderr,"%lf %lf %lf %lf %lf %e\n", *ra, *dec, pt->x, pt->y, pt->z, pt->rad);
         pt++;
     }
 
@@ -249,7 +249,7 @@ void domatch1(struct PyCatalogObject* self,
 }
 
 PyObject* domatch(struct PyCatalogObject* self, PyObject* raObj, PyObject* decObj) {
-    size_t i=0, n=0;
+    size_t i=0, j=0, n=0, oldsize=0, newsize=0;
     double *raptr=NULL, *decptr=NULL;
 
     PyObject* cat_indObj=NULL;
@@ -268,19 +268,36 @@ PyObject* domatch(struct PyCatalogObject* self, PyObject* raObj, PyObject* decOb
 
     n = PyArray_SIZE(raObj);
     for (i=0; i<n ; i++) {
+
         raptr=PyArray_GETPTR1(raObj, i);
         decptr=PyArray_GETPTR1(decObj, i);
+
         domatch1(self, *raptr, *decptr, i, matches);
 
+        if (matches->size == 0) {
+            continue;
+        }
+
         if (self->maxmatch > 0) {
-            // an exact max allowed was given
-        } else {
-            // all matches are kept
+            // an exact max allowed was given, so sort biggest first and take
+            // the closest
+            //matchstack_sort(matches);
+            matchstack_resize(matches, self->maxmatch);
+        }
+
+        oldsize=cat_ind->size;
+        newsize = oldsize + matches->size;
+        szstack_resize(cat_ind, newsize);
+        szstack_resize(input_ind, newsize);
+
+        for (j=0; j<matches->size; j++) {
+            cat_ind->data[oldsize+j] = matches->data[j].cat_ind;
+            input_ind->data[oldsize+j] = matches->data[j].input_ind;
         }
     }
     matches=matchstack_delete(matches);
 
-    if (matches->size == 0) {
+    if (cat_ind->size == 0) {
         dims[0] = 0;
         cat_indObj = PyArray_ZEROS(1, dims, dtype, 0);
         input_indObj = PyArray_ZEROS(1, dims, dtype, 0);
