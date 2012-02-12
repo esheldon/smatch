@@ -50,7 +50,7 @@ struct healpix* hpix_delete(struct healpix* hpix) {
 // radius in radians
 void hpix_disc_intersect(
         const struct healpix* hpix,
-        double ra, double dec, double radius, 
+        double x, double y, double z, double radius, 
         struct i64stack* listpix) {
 
     // this is from the f90 code
@@ -61,12 +61,12 @@ void hpix_disc_intersect(
     //double fudge = 1.362*M_PI/(4*hpix->nside);
 
     radius += fudge;
-    hpix_disc_contains(hpix, ra, dec, radius, listpix);
+    hpix_disc_contains(hpix, x, y, z, radius, listpix);
 }
 
 void hpix_disc_contains(
         const struct healpix* hpix,
-        double ra, double dec, double radius, 
+        double x0, double y0, double z0, double radius, 
         struct i64stack* listpix) {
 
     //double vector0[3];
@@ -75,9 +75,6 @@ void hpix_disc_contains(
 
     // this does not alter the storage
     i64stack_resize(listpix, 0);
-
-    double x0, y0, z0;
-    hpix_eq2xyz(ra, dec, &x0, &y0, &z0);
 
     double dth1 = 1. / (3.0*nside*nside);
     double dth2 = 2. / (3.0*nside);

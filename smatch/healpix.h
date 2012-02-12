@@ -42,7 +42,7 @@ int64 hpix_eq2pix(const struct healpix* hpix, double ra, double dec);
  */
 void hpix_disc_intersect(
         const struct healpix* hpix,
-        double ra, double dec, double radius, 
+        double x, double y, double z, double radius, 
         struct i64stack* listpix);
 /*
  Fill listpix with all pixels whose centers are contained within the disc
@@ -57,7 +57,7 @@ int64 i64min(int64 v1, int64 v2);
 
 void hpix_disc_contains(
         const struct healpix* hpix,
-        double ra, double dec, double radius, 
+        double x, double y, double z, double radius, 
         struct i64stack* listpix);
 
 /*
