@@ -1,6 +1,5 @@
 from sys import stderr
 import numpy
-import esutil as eu
 from ._smatch import Catalog
 
 def test_norad(maxmatch=1, rand=True, npts=100, verbose=False):
@@ -57,20 +56,15 @@ def test_rad(maxmatch=1, rand=True, npts=100, verbose=False):
         return
     for mc, mi, d in zip(mcat, minput, dist):
         #print '%d %d %e' % (mc,mi,d*3600)
-        dd = eu.coords.sphdist(ra[mc],dec[mc],ra[mi],dec[mi])
-        dd_gcirc = eu.coords.gcirc(ra[mc],dec[mc],ra[mi],dec[mi])
-        dd_gcirc = numpy.rad2deg(dd_gcirc)
         if mc == mi:
             spc1=''
             spc2='  '
         else:
             spc1='  '
             spc2=''
-        print '%s%.15e %.15e %.15e %.15e%s %2d %2d %.15e %.15e %.15e' \
+        print '%s%.15e %.15e %.15e %.15e%s %2d %2d %.15e' \
                 % (spc1,ra[mc],dec[mc],ra[mi],dec[mi],spc2,
-                   mc,mi,
-                   d*3600,
-                   dd*3600,dd_gcirc*3600)
+                   mc,mi,d*3600)
 
     del cat
     del mcat
