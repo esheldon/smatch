@@ -3,7 +3,7 @@ import numpy
 import esutil as eu
 from ._smatch import Catalog
 
-def test(maxmatch=1, rand=True, npts=100, verbose=False):
+def test_norad(maxmatch=1, rand=True, npts=100, verbose=False):
     if rand:
         ra = 10.0 + 0.1*numpy.random.rand(npts)
         dec = 10.0 + 0.1*numpy.random.rand(npts)
@@ -12,13 +12,39 @@ def test(maxmatch=1, rand=True, npts=100, verbose=False):
         dec = numpy.linspace(10.0,10.1,npts)
 
     nside=512
-    #rad=numpy.array(2.0/3600., dtype='f8', ndmin=1)
+    rad=0.1*numpy.random.rand(ra.size) + 2.0/3600.
+    cat=Catalog(nside,maxmatch,ra,dec,rad)
+
+    print >>stderr,'Doing match'
+    mcat, minput = cat.match(ra,dec,1)
+    print 'found',mcat.size,'matches'
+
+    if not verbose:
+        del cat
+        del mcat
+        del minput
+        return
+    for mc, mi, d in zip(mcat, minput):
+        print '%2d %2d' % (mc,mi)
+
+    del cat
+    del mcat
+    del minput
+
+def test_rad(maxmatch=1, rand=True, npts=100, verbose=False):
+    if rand:
+        ra = 10.0 + 0.1*numpy.random.rand(npts)
+        dec = 10.0 + 0.1*numpy.random.rand(npts)
+    else:
+        ra = numpy.linspace(10.0,10.1,npts)
+        dec = numpy.linspace(10.0,10.1,npts)
+
+    nside=512
     rad=0.1*numpy.random.rand(ra.size) + 2.0/3600.
     cat=Catalog(nside,maxmatch,ra,dec,rad)
 
     print >>stderr,'Doing match'
     mcat, minput, dist = cat.match(ra,dec,1)
-    #mcat, minput = cat.match(numpy.zeros(1) + 0.0,numpy.zeros(1) + 0.0)
     print 'found',mcat.size,'matches'
 
     if not verbose:
