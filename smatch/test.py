@@ -4,6 +4,7 @@ import esutil as eu
 from ._smatch import Catalog
 
 def test_norad(maxmatch=1, rand=True, npts=100, verbose=False):
+    dorad=0
     if rand:
         ra = 10.0 + 0.1*numpy.random.rand(npts)
         dec = 10.0 + 0.1*numpy.random.rand(npts)
@@ -16,7 +17,7 @@ def test_norad(maxmatch=1, rand=True, npts=100, verbose=False):
     cat=Catalog(nside,maxmatch,ra,dec,rad)
 
     print >>stderr,'Doing match'
-    mcat, minput = cat.match(ra,dec,1)
+    mcat, minput = cat.match(ra,dec,dorad)
     print 'found',mcat.size,'matches'
 
     if not verbose:
@@ -32,6 +33,7 @@ def test_norad(maxmatch=1, rand=True, npts=100, verbose=False):
     del minput
 
 def test_rad(maxmatch=1, rand=True, npts=100, verbose=False):
+    dorad=1
     if rand:
         ra = 10.0 + 0.1*numpy.random.rand(npts)
         dec = 10.0 + 0.1*numpy.random.rand(npts)
@@ -44,7 +46,7 @@ def test_rad(maxmatch=1, rand=True, npts=100, verbose=False):
     cat=Catalog(nside,maxmatch,ra,dec,rad)
 
     print >>stderr,'Doing match'
-    mcat, minput, dist = cat.match(ra,dec,1)
+    mcat, minput, dist = cat.match(ra,dec,dorad)
     print 'found',mcat.size,'matches'
 
     if not verbose:

@@ -151,20 +151,20 @@ PyCatalogObject_init(struct PyCatalogObject* self, PyObject *args, PyObject *kwd
     self->hpix=NULL;
     self->pts=NULL;
 
-    fprintf(stderr,"Initializing healpix struct, nside: %lld\n", nside);
+    //fprintf(stderr,"Initializing healpix struct, nside: %lld\n", nside);
     self->hpix = hpix_new((int64)nside);
     if (self->hpix==NULL) {
         err=1;
         goto _catalog_init_cleanup;
     }
 
-    fprintf(stderr,"Initializing x,y,z points\n");
+    //fprintf(stderr,"Initializing x,y,z points\n");
     self->pts = points_init(raObj, decObj, radObj);
     if (self->pts==NULL) {
         err=1;
         goto _catalog_init_cleanup;
     }
-    fprintf(stderr,"Initializing tree\n");
+    //fprintf(stderr,"Initializing tree\n");
     self->tree = create_tree(self->hpix, self->pts);
     if (self->tree==NULL) {
         err=1;

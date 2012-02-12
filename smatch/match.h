@@ -28,8 +28,6 @@ struct matchstack {
 
 };
 
-struct match* match_new(size_t cat_ind, size_t input_ind, double cosdist);
-
 struct matchstack* matchstack_new(void);
 void matchstack_realloc(struct matchstack* ms, size_t newsize);
 void matchstack_resize(struct matchstack* ms, size_t newsize);

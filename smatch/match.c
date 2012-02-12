@@ -4,21 +4,6 @@
 #include <string.h>
 #include "match.h"
 
-struct match* match_new(size_t cat_ind, size_t input_ind, double cosdist) {
-    struct match* match=NULL;
-
-    match=malloc(sizeof(struct match));
-    if (match==NULL) {
-        fprintf(stderr,"Error allocating match\n");
-        return NULL;
-    }
-
-    match->cat_ind=cat_ind;
-    match->input_ind=input_ind;
-    match->cosdist=cosdist;
-
-    return match;
-}
 
 struct matchstack* matchstack_new(void) {
     struct matchstack* ms=NULL;
