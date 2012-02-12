@@ -121,9 +121,7 @@ void matchstack_sort(struct matchstack* ms) {
 
 struct matchstack* matchstack_delete(struct matchstack* ms) {
     if (ms != NULL) {
-        if (ms->data != NULL) {
-            free(ms->data);
-        }
+        free(ms->data);
         free(ms);
     }
 
