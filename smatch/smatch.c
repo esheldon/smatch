@@ -1,3 +1,7 @@
+// todo
+//   store cos(rad) instead of rad in point?
+//   make a npy_intp stack, and just re-use the memory
+//   factor the domatch program
 #include <Python.h>
 #include <numpy/arrayobject.h> 
 
@@ -178,7 +182,6 @@ _catalog_init_cleanup:
 }
 
 
-
 static void
 PyCatalogObject_dealloc(struct PyCatalogObject* self)
 {
@@ -210,6 +213,78 @@ PyCatalogObject_nside(struct PyCatalogObject* self) {
     return nsideObj;
 }
 
+void SetOwnData(PyObject* array) {
+    PyArrayObject* tmp=NULL;
+
+    tmp = (PyArrayObject* ) array;
+    tmp->flags |= NPY_OWNDATA;
+}
+
+PyObject* pack_results(struct i64stack* cat_ind,
+                       struct i64stack* input_ind,
+                       struct f64stack* rad,
+                       int get_dist) {
+
+    npy_intp dims[1];
+    PyObject* cat_indObj=NULL;
+    PyObject* input_indObj=NULL;
+    PyObject* radObj=NULL;
+
+    PyObject* resTuple=NULL;
+
+    int ntup=2;
+    if (get_dist) {
+        ntup=3;
+    }
+    // make sure sizes are exact
+    if (cat_ind->size != cat_ind->allocated_size) {
+        i64stack_realloc(cat_ind, cat_ind->size);
+        i64stack_realloc(input_ind, input_ind->size);
+        if (get_dist) {
+            f64stack_realloc(rad, rad->size);
+        }
+    }
+    if (cat_ind->size == 0) {
+        // no results found, delete the stacks and output
+        // empty arrays
+        dims[0] = 0;
+        cat_indObj = PyArray_ZEROS(1, dims, NPY_INT64, 0);
+        input_indObj = PyArray_ZEROS(1, dims, NPY_INT64, 0);
+        cat_ind = i64stack_delete(cat_ind);
+        input_ind = i64stack_delete(input_ind);
+        if (get_dist) {
+            radObj = PyArray_ZEROS(1, dims, NPY_FLOAT64, 0);
+            rad=f64stack_delete(rad);
+        }
+    } else {
+
+        // We use SimpleNewFromData and set the flags so it is owned
+        // by the array.  We then do not free the stack *data* sections
+        dims[0] = cat_ind->size;
+        cat_indObj = PyArray_SimpleNewFromData(1, dims, NPY_INT64, cat_ind->data);
+        SetOwnData(cat_indObj);
+        input_indObj = PyArray_SimpleNewFromData(1, dims, NPY_INT64, input_ind->data);
+        SetOwnData(input_indObj);
+
+        // this only frees the structure, not the data at which it is pointing
+        free(cat_ind); cat_ind=NULL;
+        free(input_ind); input_ind=NULL;
+        if (get_dist) {
+            radObj = PyArray_SimpleNewFromData(1, dims, NPY_FLOAT64, rad->data);
+            SetOwnData(radObj);
+            free(rad); rad=NULL;
+        }
+
+    }
+    resTuple=PyTuple_New(ntup);
+    PyTuple_SetItem(resTuple, 0, cat_indObj);
+    PyTuple_SetItem(resTuple, 1, input_indObj);
+    if (get_dist) {
+        PyTuple_SetItem(resTuple, 2, radObj);
+    }
+
+    return resTuple;
+}
 void domatch1(struct PyCatalogObject* self, 
               double ra, double dec, size_t input_ind,
               struct matchstack* matches) {
@@ -248,23 +323,28 @@ void domatch1(struct PyCatalogObject* self,
     }
 }
 
-PyObject* domatch(struct PyCatalogObject* self, PyObject* raObj, PyObject* decObj) {
+PyObject* domatch(struct PyCatalogObject* self, PyObject* raObj, PyObject* decObj, int get_dist) {
     size_t i=0, j=0, n=0, oldsize=0, newsize=0;
-    double *raptr=NULL, *decptr=NULL;
+    double *raptr=NULL, *decptr=NULL, trad=0;
+    struct match* match=NULL;
 
-    PyObject* cat_indObj=NULL;
-    PyObject* input_indObj=NULL;
-    npy_intp dims[1];
-    int dtype=NPY_INTP;
+    //npy_intp dims[1];
 
     PyObject* resTuple=NULL;
+    //int ntup=2;
 
     struct matchstack* matches = matchstack_new();
 
-    // these are outputs
-    struct szstack* cat_ind   = szstack_new(0);
-    struct szstack* input_ind = szstack_new(0);
+    // these are outputs.  Using int64 because that
+    // is common to stacks and numpy arrays
+    struct i64stack* cat_ind   = i64stack_new(0);
+    struct i64stack* input_ind = i64stack_new(0);
+    struct f64stack* rad = NULL;
 
+    if (get_dist) {
+        // don't allocate unless we need it
+        rad = f64stack_new(0);
+    }
 
     n = PyArray_SIZE(raObj);
     for (i=0; i<n ; i++) {
@@ -279,56 +359,42 @@ PyObject* domatch(struct PyCatalogObject* self, PyObject* raObj, PyObject* decOb
         }
 
         if (self->maxmatch > 0) {
-            // an exact max allowed was given, so sort biggest first and take
-            // the closest
-            //matchstack_sort(matches);
-            matchstack_resize(matches, self->maxmatch);
+            // max match count was given
+            // If we have too many matches, sort biggest first and take
+            // the closest maxmatch matches
+            if (self->maxmatch < matches->size) {
+                matchstack_sort(matches);
+                matchstack_resize(matches, self->maxmatch);
+            }
         }
 
         oldsize=cat_ind->size;
         newsize = oldsize + matches->size;
-        szstack_resize(cat_ind, newsize);
-        szstack_resize(input_ind, newsize);
+        i64stack_resize(cat_ind, newsize);
+        i64stack_resize(input_ind, newsize);
+        if (get_dist) {
+            f64stack_resize(rad, newsize);
+        }
 
         for (j=0; j<matches->size; j++) {
-            cat_ind->data[oldsize+j] = matches->data[j].cat_ind;
-            input_ind->data[oldsize+j] = matches->data[j].input_ind;
+            match=&matches->data[j];
+
+            cat_ind->data[oldsize+j] = match->cat_ind;
+            input_ind->data[oldsize+j] = match->input_ind;
+            if (get_dist) {
+                trad = match->cosdist;
+                if (trad >= 1) {
+                    trad=0;
+                } else {
+                    trad = acos(trad)*R2D;
+                }
+                rad->data[oldsize+j] = trad;
+            }
         }
     }
     matches=matchstack_delete(matches);
 
-    if (cat_ind->size == 0) {
-        dims[0] = 0;
-        cat_indObj = PyArray_ZEROS(1, dims, dtype, 0);
-        input_indObj = PyArray_ZEROS(1, dims, dtype, 0);
-    } else {
-        npy_intp* captr=NULL;
-        npy_intp* iaptr=NULL;
-        size_t* cptr=NULL;
-        size_t* iptr=NULL;
-        dims[0] = cat_ind->size;
-        cat_indObj = PyArray_EMPTY(1, dims, dtype, 0);
-        input_indObj = PyArray_EMPTY(1, dims, dtype, 0);
-
-        captr=PyArray_DATA(cat_indObj);
-        iaptr=PyArray_DATA(input_indObj);
-        cptr=cat_ind->data;
-        iptr=input_ind->data;
-        for (i=0; i<dims[0]; i++) {
-
-            *captr = (npy_intp) (*cptr);
-            *iaptr = (npy_intp) (*iptr);
-
-            captr++;
-            iaptr++;
-            cptr++;
-            iptr++;
-        }
-    }
-
-    resTuple=PyTuple_New(2);
-    PyTuple_SetItem(resTuple, 0, cat_indObj);
-    PyTuple_SetItem(resTuple, 1, input_indObj);
+    resTuple = pack_results(cat_ind, input_ind, rad, get_dist);
     return resTuple;
 }
 
@@ -336,14 +402,15 @@ PyObject* PyCatalogObject_match(struct PyCatalogObject* self, PyObject *args)
 {
     PyObject* raObj=NULL;
     PyObject* decObj=NULL;
+    int get_dist=0;
     PyObject* resObj=NULL;
 
-    if (!PyArg_ParseTuple(args, (char*)"OO", &raObj, &decObj)) {
+    if (!PyArg_ParseTuple(args, (char*)"OOi", &raObj, &decObj, &get_dist)) {
         Py_XINCREF(Py_None);
         return Py_None;
     }
 
-    resObj = domatch(self, raObj, decObj);
+    resObj = domatch(self, raObj, decObj, get_dist);
     return resObj;
 }
 

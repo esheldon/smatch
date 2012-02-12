@@ -113,6 +113,27 @@ void matchstack_push(struct matchstack* ms, size_t cat_ind, size_t input_ind, do
 
 }
 
+
+int match_compare(const void *a, const void *b) {
+    // we want to sort largest first, so will
+    // reverse the normal trend
+    double temp = 
+        ((struct match*)b)->cosdist
+         -
+        ((struct match*)a)->cosdist;
+    if (temp > 0)
+        return 1;
+    else if (temp < 0)
+        return -1;
+    else
+        return 0;
+}
+
+void matchstack_sort(struct matchstack* ms) {
+    qsort(ms->data, ms->size, sizeof(struct match), match_compare);
+}
+
+
 struct matchstack* matchstack_delete(struct matchstack* ms) {
     if (ms != NULL) {
         if (ms->data != NULL) {

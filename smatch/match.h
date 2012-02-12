@@ -36,5 +36,7 @@ void matchstack_resize(struct matchstack* ms, size_t newsize);
 void matchstack_push(struct matchstack* ms, 
                      size_t cat_ind, size_t input_ind, double cosdist);
 
+int match_compare(const void *a, const void *b);
+void matchstack_sort(struct matchstack* ms);
 struct matchstack* matchstack_delete(struct matchstack* ms);
 #endif
