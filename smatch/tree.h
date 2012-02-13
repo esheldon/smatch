@@ -13,7 +13,6 @@ struct tree_node {
 };
 
 
-struct tree_node* tree_new(int64_t nside);
 void tree_insert(struct tree_node ** self, int64_t val, size_t index);
 struct tree_node* tree_find(struct tree_node* self, int64_t val);
 
