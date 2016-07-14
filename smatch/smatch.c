@@ -39,8 +39,7 @@ static void match_vector_sort(match_vector* self) {
     qsort(self->data, self->size, sizeof(Match), match_compare);
 }
 
-static void match_vector_push_matches(match_vector* self, 
-                               const match_vector* matches)
+static void push_matches(match_vector* self, const match_vector* matches)
 {
     size_t i=0;
     const Match* match=NULL;
@@ -297,7 +296,7 @@ static int domatch(struct PySMatchCat* self, PyObject* raObj, PyObject* decObj) 
             continue;
         }
 
-        match_vector_push_matches(self->matches, new_matches);
+        push_matches(self->matches, new_matches);
 
     }
     vector_free(new_matches);
