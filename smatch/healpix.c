@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "healpix.h"
 #include "defs.h"
-#include "stack.h"
+#include "vector.h"
 
 
 
@@ -51,7 +51,7 @@ struct healpix* hpix_delete(struct healpix* hpix) {
 void hpix_disc_intersect(
         const struct healpix* hpix,
         double x, double y, double z, double radius, 
-        struct i64stack* listpix) {
+        lvector* listpix) {
 
     // this is from the f90 code
     // this number is acos(2/3)
@@ -67,14 +67,14 @@ void hpix_disc_intersect(
 void hpix_disc_contains(
         const struct healpix* hpix,
         double x0, double y0, double z0, double radius, 
-        struct i64stack* listpix) {
+        lvector* listpix) {
 
     //double vector0[3];
     int64 nside=hpix->nside;
     double cosang = cos(radius);
 
     // this does not alter the storage
-    i64stack_resize(listpix, 0);
+    vector_resize(listpix, 0);
 
     double dth1 = 1. / (3.0*nside*nside);
     double dth2 = 2. / (3.0*nside);
@@ -169,7 +169,7 @@ void hpix_in_ring(
         int64 iz, 
         double phi0, 
         double dphi, 
-        struct i64stack* plist) {
+        lvector* plist) {
 
     int64 nr, ir, ipix1,i;
     double shift=0.5;
@@ -198,7 +198,7 @@ void hpix_in_ring(
 
     if (dphi > (M_PI-1e-7)) {
         for (i=ipix1; i<=ipix2; ++i) {
-            i64stack_push(plist, i);
+            vector_push(plist, i);
         }
     } else {
 
@@ -213,7 +213,7 @@ void hpix_in_ring(
             if (pixnum>ipix2) {
                 pixnum -= nr;
             }
-            i64stack_push(plist, pixnum);
+            vector_push(plist, pixnum);
         }
     }
 

@@ -115,29 +115,29 @@ struct szstack* szstack_new(size_t num);
 // if size > allocated size, then a reallocation occurs
 // if size <= internal size, then only the ->size field is reset
 // use szstack_realloc() to reallocate the data vector and set the ->size
-void szstack_resize(struct szstack* stack, size_t newsize);
+void szstack_resize(struct szstack* self, size_t newsize);
 
 // perform reallocation on the underlying data vector. This does
 // not change the size field unless the new size is smaller
 // than the viewed size
-void szstack_realloc(struct szstack* stack, size_t newsize);
+void szstack_realloc(struct szstack* self, size_t newsize);
 
 // completely clears memory in the data vector
-void szstack_clear(struct szstack* stack);
+void szstack_clear(struct szstack* self);
 
 // clears all memory and sets pointer to NULL
 // usage: stack=sztack_delete(stack);
-struct szstack* szstack_delete(struct szstack* stack);
+struct szstack* szstack_delete(struct szstack* self);
 
 // if reallocation is needed, size is increased by 50 percent
 // unless size is zero, when it 100 are allocated
-void szstack_push(struct szstack* stack, size_t val);
+void szstack_push(struct szstack* self, size_t val);
 // pop the last element and decrement size; no reallocation is performed
 // if empty, INT64_MIN is returned
-size_t szstack_pop(struct szstack* stack);
+size_t szstack_pop(struct szstack* self);
 
 int __szstack_compare_el(const void *a, const void *b);
-void szstack_sort(struct szstack* stack);
-size_t* szstack_find(struct szstack* stack, size_t el);
+void szstack_sort(struct szstack* self);
+size_t* szstack_find(struct szstack* self, size_t el);
 
 #endif  // header guard

@@ -350,56 +350,57 @@ void szstack_resize(struct szstack* stack, size_t newsize) {
    stack->size = newsize;
 }
 
-void szstack_clear(struct szstack* stack) {
-    stack->size=0;
-    stack->allocated_size=0;
-    free(stack->data);
-    stack->data=NULL;
+void szstack_clear(struct szstack* self) {
+    self->size=0;
+    self->allocated_size=0;
+    free(self->data);
+    self->data=NULL;
 }
 
-struct szstack* szstack_delete(struct szstack* stack) {
-    if (stack != NULL) {
-        szstack_clear(stack);
-        free(stack);
+struct szstack* szstack_delete(struct szstack* self) {
+    if (self != NULL) {
+        szstack_clear(self);
+        free(self);
+        self=NULL;
     }
-    return NULL;
+    return self;
 }
 
-void szstack_push(struct szstack* stack, size_t val) {
+void szstack_push(struct szstack* self, size_t val) {
     // see if we have already filled the available data vector
     // if so, reallocate to larger storage
-    if (stack->size == stack->allocated_size) {
+    if (self->size == self->allocated_size) {
 
         size_t newsize;
-        if (stack->allocated_size == 0) {
-            newsize=stack->push_initsize;
+        if (self->allocated_size == 0) {
+            newsize=self->push_initsize;
         } else {
             // currenly we always use the multiplier reallocation  method.
-            if (stack->push_realloc_style != STACK_PUSH_REALLOC_MULT) {
+            if (self->push_realloc_style != STACK_PUSH_REALLOC_MULT) {
                 fprintf(stderr,"Currently only support push realloc style STACK_PUSH_REALLOC_MULT\n");
                 exit(EXIT_FAILURE);
             }
             // this will "floor" the size
-            newsize = (size_t)(stack->allocated_size*stack->realloc_multval);
+            newsize = (size_t)(self->allocated_size*self->realloc_multval);
             // we want ceiling
             newsize++;
         }
 
-        szstack_realloc(stack, newsize);
+        szstack_realloc(self, newsize);
 
     }
 
-    stack->size++;
-    stack->data[stack->size-1] = val;
+    self->size++;
+    self->data[self->size-1] = val;
 }
 
-size_t szstack_pop(struct szstack* stack) {
-    if (stack->size == 0) {
+size_t szstack_pop(struct szstack* self) {
+    if (self->size == 0) {
         return SIZE_MAX;
     }
 
-    size_t val=stack->data[stack->size-1];
-    stack->size--;
+    size_t val=self->data[self->size-1];
+    self->size--;
     return val;
         
 }
@@ -418,8 +419,8 @@ int __szstack_compare_el(const void *a, const void *b) {
 }
 
 
-void szstack_sort(struct szstack* stack) {
-    qsort(stack->data, stack->size, sizeof(size_t), __szstack_compare_el);
+void szstack_sort(struct szstack* self) {
+    qsort(self->data, self->size, sizeof(size_t), __szstack_compare_el);
 }
 size_t* szstack_find(struct szstack* stack, size_t el) {
     return (size_t*) bsearch(&el, stack->data, stack->size, sizeof(size_t), __szstack_compare_el);

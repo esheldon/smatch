@@ -1,36 +1,58 @@
-// todo
-//   store cos(rad) instead of rad in point?
-//   make a npy_intp stack, and just re-use the memory
-//   factor the domatch program
 #include <Python.h>
 #include <numpy/arrayobject.h> 
 
 #include "math.h"
 #include "defs.h"
-#include "stack.h"
-#include "match.h"
+#include "vector.h"
 #include "tree.h"
 #include "healpix.h"
 
-struct point {
-    double x;
-    double y;
-    double z;
-    double rad; // radians
-};
-
-struct points {
-    size_t size;
-    struct point* data;
-};
-
-struct PyCatalogObject {
+struct PySMatchCat {
     PyObject_HEAD
     int64 maxmatch;
-    struct points* pts;
+
+    point_vector *pts;
     struct healpix* hpix;
     struct tree_node* tree;
+
+    match_vector *matches;
+
 };
+
+// sort functions for the matches
+int match_compare(const void *a, const void *b) {
+    // we want to sort largest first, so will
+    // reverse the normal trend
+    double temp = 
+        ((Match*)b)->cosdist
+         -
+        ((Match*)a)->cosdist;
+    if (temp > 0)
+        return 1;
+    else if (temp < 0)
+        return -1;
+    else
+        return 0;
+}
+
+void match_vector_sort(match_vector* self) {
+    qsort(self->data, self->size, sizeof(Match), match_compare);
+}
+
+void match_vector_push_matches(match_vector* self, 
+                               const match_vector* matches)
+{
+    size_t i=0;
+    const Match* match=NULL;
+
+    for (i=0; i<matches->size; i++) {
+        match=&self->data[i];
+
+        vector_push(self, *match);
+    }
+    
+}
+
 
 
 /*
@@ -40,9 +62,10 @@ struct PyCatalogObject {
  * radii get converted to radians
  */
 
-struct points* points_init(PyObject* raObj, PyObject* decObj, PyObject* radObj) {
-    struct points* pts = NULL;
-    struct point* pt = NULL;
+static point_vector* points_init(PyObject* raObj, PyObject* decObj, PyObject* radObj) {
+    point_vector *pts=NULL;
+    Point* pt = NULL;
+    double *raptr=NULL, *decptr=NULL, *radptr=NULL;
 
     npy_intp n=0, i=0, nrad=0;
     n = PyArray_SIZE(raObj);
@@ -58,56 +81,42 @@ struct points* points_init(PyObject* raObj, PyObject* decObj, PyObject* radObj) 
     }
 
 
-    pts = calloc(1,sizeof(struct points));
-    if (pts == NULL) {
-        PyErr_Format(PyExc_MemoryError, "Could not allocate struct points\n");
-        return NULL;
-    }
-    pts->size = n;
-    pts->data = calloc(n,sizeof(struct point));
-    if (pts->data == NULL) {
-        PyErr_Format(PyExc_MemoryError, "Could not allocate points\n");
-        free(pts);
-        return NULL;
-    }
+    pts = point_vector_new();
 
-    pt=&pts->data[0];
-    double *ra=NULL, *dec=NULL, *rad=NULL;
+    vector_resize(pts, n); 
+
+    if (nrad == 1) {
+        radptr = PyArray_GETPTR1(radObj, 0);
+        pt->radius = (*radptr)*D2R;
+    }
     for (i=0; i<n; i++) {
-        ra=PyArray_GETPTR1(raObj, i);
-        dec=PyArray_GETPTR1(decObj, i);
 
-        hpix_eq2xyz(*ra, *dec, &pt->x, &pt->y, &pt->z);
+        pt=&pts->data[i];
+
+        raptr=PyArray_GETPTR1(raObj, i);
+        decptr=PyArray_GETPTR1(decObj, i);
+
+        hpix_eq2xyz(*raptr, *decptr, &pt->x, &pt->y, &pt->z);
 
         if (nrad > 1) {
-            rad = PyArray_GETPTR1(radObj, i);
-            *rad = (*rad)*D2R;
-        } else if (i == 0) {
-            rad = PyArray_GETPTR1(radObj, 0);
-            *rad = (*rad)*D2R;
+            radptr = PyArray_GETPTR1(radObj, i);
+            pt->radius = (*radptr)*D2R;
         }
 
-        pt->rad = *rad;
-        //fprintf(stderr,"%lf %lf %lf %lf %lf %e\n", *ra, *dec, pt->x, pt->y, pt->z, pt->rad);
-        pt++;
     }
-
-
 
     return pts;
 }
 
-
-
 // create a tree based on the healpix id
-struct tree_node* create_tree(struct healpix* hpix, struct points* pts) {
+static struct tree_node* create_tree(struct healpix* hpix, point_vector* pts) {
     struct tree_node* tree=NULL;
-    struct i64stack* listpix=NULL;
-    struct point* pt=NULL;
+    lvector* listpix=NULL;
+    Point* pt=NULL;
     int64* data=NULL;
     int64 half_npix=0;
     
-    listpix = i64stack_new(0);
+    listpix = lvector_new();
 
     // this will produce a more balanced tree across the whole sky
     half_npix = hpix->npix/2;
@@ -115,7 +124,7 @@ struct tree_node* create_tree(struct healpix* hpix, struct points* pts) {
     size_t count=0;
     pt=pts->data;
     while (pt < pts->data + pts->size) {
-        hpix_disc_intersect(hpix, pt->x, pt->y, pt->z, pt->rad, listpix);
+        hpix_disc_intersect(hpix, pt->x, pt->y, pt->z, pt->radius, listpix);
 
         data=listpix->data;
         while (data < listpix->data + listpix->size) {
@@ -126,14 +135,14 @@ struct tree_node* create_tree(struct healpix* hpix, struct points* pts) {
         pt++;
         count++;
     }
-    listpix=i64stack_delete(listpix);
+    vector_free(listpix);
 
     return tree;
 }
 
 
 static int
-PyCatalogObject_init(struct PyCatalogObject* self, PyObject *args, PyObject *kwds)
+PySMatchCat_init(struct PySMatchCat* self, PyObject *args, PyObject *kwds)
 {
     PY_LONG_LONG nside=0;
     PY_LONG_LONG maxmatch=0;
@@ -150,6 +159,8 @@ PyCatalogObject_init(struct PyCatalogObject* self, PyObject *args, PyObject *kwd
     self->tree=NULL;
     self->hpix=NULL;
     self->pts=NULL;
+
+    self->matches = match_vector_new();
 
     //fprintf(stderr,"Initializing healpix struct, nside: %lld\n", nside);
     self->hpix = hpix_new((int64)nside);
@@ -174,6 +185,7 @@ PyCatalogObject_init(struct PyCatalogObject* self, PyObject *args, PyObject *kwd
 _catalog_init_cleanup:
     if (err != 0) {
         free(self->pts);
+        self->pts=NULL;
         self->hpix = hpix_delete(self->hpix);
         self->tree = tree_delete(self->tree);
         return -1;
@@ -183,13 +195,10 @@ _catalog_init_cleanup:
 
 
 static void
-PyCatalogObject_dealloc(struct PyCatalogObject* self)
+PySMatchCat_dealloc(struct PySMatchCat* self)
 {
     //self->tree = tree_delete(self->tree);
-    if (self->pts != NULL) {
-        free(self->pts->data);
-        free(self->pts);
-    }
+    vector_free(self->pts);
     self->hpix = hpix_delete(self->hpix);
     self->tree = tree_delete(self->tree);
     self->ob_type->tp_free((PyObject*)self);
@@ -197,7 +206,7 @@ PyCatalogObject_dealloc(struct PyCatalogObject* self)
 
 
 static PyObject *
-PyCatalogObject_repr(struct PyCatalogObject* self) {
+PySMatchCat_repr(struct PySMatchCat* self) {
     char repr[256];
     sprintf(repr, "Catalog\n    hpix nside: %ld", self->hpix->nside);
     return PyString_FromString(repr);
@@ -206,12 +215,15 @@ PyCatalogObject_repr(struct PyCatalogObject* self) {
 
 
 static PyObject *
-PyCatalogObject_nside(struct PyCatalogObject* self) {
-
-    PyObject* nsideObj=NULL;
-    nsideObj = PyLong_FromLongLong( (long long)self->hpix->nside);
-    return nsideObj;
+PySMatchCat_nside(struct PySMatchCat* self) {
+    return Py_BuildValue("l", self->hpix->nside);
 }
+
+static PyObject *
+PySMatchCat_nmatches(struct PySMatchCat* self) {
+    return Py_BuildValue("l", self->matches->size);
+}
+
 
 void SetOwnData(PyObject* array) {
     PyArrayObject* tmp=NULL;
@@ -220,88 +232,26 @@ void SetOwnData(PyObject* array) {
     tmp->flags |= NPY_OWNDATA;
 }
 
-PyObject* pack_results(struct i64stack* cat_ind,
-                       struct i64stack* input_ind,
-                       struct f64stack* rad,
-                       int get_dist) {
 
-    npy_intp dims[1];
-    PyObject* cat_indObj=NULL;
-    PyObject* input_indObj=NULL;
-    PyObject* radObj=NULL;
-
-    PyObject* resTuple=NULL;
-
-    int ntup=2;
-    if (get_dist) {
-        ntup=3;
-    }
-    // make sure sizes are exact
-    if (cat_ind->size != cat_ind->allocated_size) {
-        i64stack_realloc(cat_ind, cat_ind->size);
-        i64stack_realloc(input_ind, input_ind->size);
-        if (get_dist) {
-            f64stack_realloc(rad, rad->size);
-        }
-    }
-    if (cat_ind->size == 0) {
-        // no results found, delete the stacks and output
-        // empty arrays
-        dims[0] = 0;
-        cat_indObj = PyArray_ZEROS(1, dims, NPY_INT64, 0);
-        input_indObj = PyArray_ZEROS(1, dims, NPY_INT64, 0);
-        cat_ind = i64stack_delete(cat_ind);
-        input_ind = i64stack_delete(input_ind);
-        if (get_dist) {
-            radObj = PyArray_ZEROS(1, dims, NPY_FLOAT64, 0);
-            rad=f64stack_delete(rad);
-        }
-    } else {
-
-        // We use SimpleNewFromData and set the flags so it is owned
-        // by the array.  We then do not free the stack *data* sections
-        dims[0] = cat_ind->size;
-        cat_indObj = PyArray_SimpleNewFromData(1, dims, NPY_INT64, cat_ind->data);
-        SetOwnData(cat_indObj);
-        input_indObj = PyArray_SimpleNewFromData(1, dims, NPY_INT64, input_ind->data);
-        SetOwnData(input_indObj);
-
-        // this only frees the structure, not the data at which it is pointing
-        free(cat_ind); cat_ind=NULL;
-        free(input_ind); input_ind=NULL;
-        if (get_dist) {
-            radObj = PyArray_SimpleNewFromData(1, dims, NPY_FLOAT64, rad->data);
-            SetOwnData(radObj);
-            free(rad); rad=NULL;
-        }
-
-    }
-    resTuple=PyTuple_New(ntup);
-    PyTuple_SetItem(resTuple, 0, cat_indObj);
-    PyTuple_SetItem(resTuple, 1, input_indObj);
-    if (get_dist) {
-        PyTuple_SetItem(resTuple, 2, radObj);
-    }
-
-    return resTuple;
-}
-void domatch1(struct PyCatalogObject* self, 
-              double ra, double dec, size_t input_ind,
-              struct matchstack* matches) {
+static void domatch1(const struct PySMatchCat* self, 
+                     double ra,
+                     double dec,
+                     size_t input_ind,
+                     match_vector* matches) {
 
     int64 hpixid=0;
     struct tree_node* node=NULL;
     int64 half_npix=0;
+    Match match={0};
 
-
-    matchstack_resize(matches,0);
+    vector_resize(matches,0);
 
     half_npix = self->hpix->npix/2;
     hpixid = hpix_eq2pix(self->hpix, ra, dec) - half_npix;
     node = tree_find(self->tree, hpixid);
 
     if (node != NULL) {
-        struct point* pt=NULL;
+        Point* pt=NULL;
         size_t i=0, cat_ind=0;
         double x=0,y=0,z=0;
         double cos_radius=0;
@@ -313,38 +263,37 @@ void domatch1(struct PyCatalogObject* self,
 
             pt = &self->pts->data[cat_ind];
 
-            cos_radius = cos(pt->rad);
+            cos_radius = cos(pt->radius);
             double cos_angle = pt->x*x + pt->y*y + pt->z*z;
 
             if (cos_angle > cos_radius) {
-                matchstack_push(matches, cat_ind, input_ind, cos_angle);
+                match.cat_ind=cat_ind;
+                match.input_ind=input_ind;
+                match.cosdist=cos_angle;
+                vector_push(matches, match);
             }
         }
     }
+
+    if (self->maxmatch > 0) {
+        // max match count was given
+        // If we have too many matches, sort biggest first and take
+        // the closest maxmatch matches
+        if (self->maxmatch < matches->size) {
+            match_vector_sort(matches);
+            vector_resize(matches, self->maxmatch);
+        }
+    }
+
 }
 
-PyObject* domatch(struct PyCatalogObject* self, PyObject* raObj, PyObject* decObj, int get_dist) {
-    size_t i=0, j=0, n=0, oldsize=0, newsize=0;
-    double *raptr=NULL, *decptr=NULL, trad=0;
-    struct match* match=NULL;
+static int domatch(struct PySMatchCat* self, PyObject* raObj, PyObject* decObj) {
+    size_t i=0, n=0;
+    double *raptr=NULL, *decptr=NULL;
+    match_vector* new_matches = match_vector_new();
 
-    //npy_intp dims[1];
-
-    PyObject* resTuple=NULL;
-    //int ntup=2;
-
-    struct matchstack* matches = matchstack_new();
-
-    // these are outputs.  Using int64 because that
-    // is common to stacks and numpy arrays
-    struct i64stack* cat_ind   = i64stack_new(0);
-    struct i64stack* input_ind = i64stack_new(0);
-    struct f64stack* rad = NULL;
-
-    if (get_dist) {
-        // don't allocate unless we need it
-        rad = f64stack_new(0);
-    }
+    // always reset the match structure
+    vector_clear(self->matches);
 
     n = PyArray_SIZE(raObj);
     for (i=0; i<n ; i++) {
@@ -352,75 +301,41 @@ PyObject* domatch(struct PyCatalogObject* self, PyObject* raObj, PyObject* decOb
         raptr=PyArray_GETPTR1(raObj, i);
         decptr=PyArray_GETPTR1(decObj, i);
 
-        domatch1(self, *raptr, *decptr, i, matches);
+        domatch1(self, *raptr, *decptr, i, new_matches);
 
-        if (matches->size == 0) {
+        if (new_matches->size == 0) {
             continue;
         }
 
-        if (self->maxmatch > 0) {
-            // max match count was given
-            // If we have too many matches, sort biggest first and take
-            // the closest maxmatch matches
-            if (self->maxmatch < matches->size) {
-                matchstack_sort(matches);
-                matchstack_resize(matches, self->maxmatch);
-            }
-        }
+        match_vector_push_matches(self->matches, new_matches);
 
-        oldsize=cat_ind->size;
-        newsize = oldsize + matches->size;
-        i64stack_resize(cat_ind, newsize);
-        i64stack_resize(input_ind, newsize);
-        if (get_dist) {
-            f64stack_resize(rad, newsize);
-        }
-
-        for (j=0; j<matches->size; j++) {
-            match=&matches->data[j];
-
-            cat_ind->data[oldsize+j] = match->cat_ind;
-            input_ind->data[oldsize+j] = match->input_ind;
-            if (get_dist) {
-                trad = match->cosdist;
-                if (trad >= 1) {
-                    trad=0;
-                } else {
-                    trad = acos(trad)*R2D;
-                }
-                rad->data[oldsize+j] = trad;
-            }
-        }
     }
-    matches=matchstack_delete(matches);
+    vector_free(new_matches);
 
-    resTuple = pack_results(cat_ind, input_ind, rad, get_dist);
-    return resTuple;
+    return 1;
 }
 
-PyObject* PyCatalogObject_match(struct PyCatalogObject* self, PyObject *args)
+static PyObject* PySMatchCat_match(struct PySMatchCat* self, PyObject *args)
 {
     PyObject* raObj=NULL;
     PyObject* decObj=NULL;
-    int get_dist=0;
-    PyObject* resObj=NULL;
 
-    if (!PyArg_ParseTuple(args, (char*)"OOi", &raObj, &decObj, &get_dist)) {
-        Py_XINCREF(Py_None);
-        return Py_None;
+    if (!PyArg_ParseTuple(args, (char*)"OO", &raObj, &decObj)) {
+        return NULL;
     }
 
-    resObj = domatch(self, raObj, decObj, get_dist);
-    return resObj;
+    domatch(self, raObj, decObj);
+    Py_RETURN_NONE;
 }
 
 
 
 
 
-static PyMethodDef PyCatalogObject_methods[] = {
-    {"nside",              (PyCFunction)PyCatalogObject_nside,          METH_VARARGS,  "nside\n\nReturn the nside for healpix."},
-    {"match",              (PyCFunction)PyCatalogObject_match,          METH_VARARGS,  "match\n\nMatch the catalog to the input ra,dec arrays."},
+static PyMethodDef PySMatchCat_methods[] = {
+    {"get_nmatches",           (PyCFunction)PySMatchCat_nmatches,          METH_VARARGS,  "nmatches\n\nGet the nside for healpix."},
+    {"get_nside",              (PyCFunction)PySMatchCat_nside,          METH_VARARGS,  "nside\n\nGet the nside for healpix."},
+    {"match",              (PyCFunction)PySMatchCat_match,          METH_VARARGS,  "match\n\nMatch the catalog to the input ra,dec arrays."},
     {NULL}  /* Sentinel */
 };
 
@@ -430,15 +345,15 @@ static PyTypeObject PyCatalogType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
     "_smatch.Catalog",             /*tp_name*/
-    sizeof(struct PyCatalogObject), /*tp_basicsize*/
+    sizeof(struct PySMatchCat), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
-    (destructor)PyCatalogObject_dealloc, /*tp_dealloc*/
+    (destructor)PySMatchCat_dealloc, /*tp_dealloc*/
     0,                         /*tp_print*/
     0,                         /*tp_getattr*/
     0,                         /*tp_setattr*/
     0,                         /*tp_compare*/
     //0,                         /*tp_repr*/
-    (reprfunc)PyCatalogObject_repr,                         /*tp_repr*/
+    (reprfunc)PySMatchCat_repr,                         /*tp_repr*/
     0,                         /*tp_as_number*/
     0,                         /*tp_as_sequence*/
     0,                         /*tp_as_mapping*/
@@ -456,7 +371,7 @@ static PyTypeObject PyCatalogType = {
     0,                     /* tp_weaklistoffset */
     0,                     /* tp_iter */
     0,                     /* tp_iternext */
-    PyCatalogObject_methods,             /* tp_methods */
+    PySMatchCat_methods,             /* tp_methods */
     0,             /* tp_members */
     0,                         /* tp_getset */
     0,                         /* tp_base */
@@ -465,7 +380,7 @@ static PyTypeObject PyCatalogType = {
     0,                         /* tp_descr_set */
     0,                         /* tp_dictoffset */
     //0,     /* tp_init */
-    (initproc)PyCatalogObject_init,      /* tp_init */
+    (initproc)PySMatchCat_init,      /* tp_init */
     0,                         /* tp_alloc */
     PyType_GenericNew,                 /* tp_new */
 };
