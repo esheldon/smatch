@@ -47,25 +47,20 @@ def test_against_htm(maxmatch=1, rand=True, npts=100, verbose=False, nside=512, 
         ra = numpy.linspace(10.0,10.1,npts)
         dec = numpy.linspace(10.0,10.1,npts)
 
-    rad=0.1*numpy.random.rand(ra.size) + 2.0/3600.
-    cat=Catalog(nside,maxmatch,ra,dec,rad)
+    radii=0.1*numpy.random.rand(ra.size) + 2.0/3600.
+    cat=Catalog(nside,maxmatch,ra,dec,radii)
 
     print(stderr,'Doing healpix match')
     t0=time.time()
-    mcat, minput = cat.match(ra,dec,dorad)
+    cat.match(ra,dec)
     eu.misc.ptime(time.time()-t0)
 
-    print('found',mcat.size,'matches')
-
-    del cat
-    del mcat
-    del minput
-
+    print('found',cat.get_nmatches(),'matches')
 
     print('doing htm match')
     h=eu.htm.HTM(depth)
     t0=time.time()
-    m1,m2,dist=h.match(ra,dec,ra,dec,rad,maxmatch=maxmatch)
+    m1,m2,dist=h.match(ra,dec,ra,dec,radii,maxmatch=maxmatch)
     eu.misc.ptime(time.time()-t0)
 
     print('found',m1.size,'matches')

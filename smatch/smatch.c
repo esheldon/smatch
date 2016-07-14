@@ -20,7 +20,7 @@ struct PySMatchCat {
 };
 
 // sort functions for the matches
-int match_compare(const void *a, const void *b) {
+static int match_compare(const void *a, const void *b) {
     // we want to sort largest first, so will
     // reverse the normal trend
     double temp = 
@@ -35,18 +35,18 @@ int match_compare(const void *a, const void *b) {
         return 0;
 }
 
-void match_vector_sort(match_vector* self) {
+static void match_vector_sort(match_vector* self) {
     qsort(self->data, self->size, sizeof(Match), match_compare);
 }
 
-void match_vector_push_matches(match_vector* self, 
+static void match_vector_push_matches(match_vector* self, 
                                const match_vector* matches)
 {
     size_t i=0;
     const Match* match=NULL;
 
     for (i=0; i<matches->size; i++) {
-        match=&self->data[i];
+        match=&matches->data[i];
 
         vector_push(self, *match);
     }
@@ -225,14 +225,6 @@ PySMatchCat_nmatches(struct PySMatchCat* self) {
 }
 
 
-void SetOwnData(PyObject* array) {
-    PyArrayObject* tmp=NULL;
-
-    tmp = (PyArrayObject* ) array;
-    tmp->flags |= NPY_OWNDATA;
-}
-
-
 static void domatch1(const struct PySMatchCat* self, 
                      double ra,
                      double dec,
@@ -275,14 +267,12 @@ static void domatch1(const struct PySMatchCat* self,
         }
     }
 
-    if (self->maxmatch > 0) {
+    if (self->maxmatch > 0 && self->maxmatch < matches->size) {
         // max match count was given
-        // If we have too many matches, sort biggest first and take
+        // If we have too many matches, sort closest first and take
         // the closest maxmatch matches
-        if (self->maxmatch < matches->size) {
-            match_vector_sort(matches);
-            vector_resize(matches, self->maxmatch);
-        }
+        match_vector_sort(matches);
+        vector_resize(matches, self->maxmatch);
     }
 
 }
