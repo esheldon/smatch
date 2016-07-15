@@ -144,37 +144,33 @@ static int
 PySMatchCat_init(struct PySMatchCat* self, PyObject *args, PyObject *kwds)
 {
     PY_LONG_LONG nside=0;
-    PY_LONG_LONG maxmatch=0;
     PyObject* raObj=NULL;
     PyObject* decObj=NULL;
     PyObject* radObj=NULL;
     int err=0;
 
-    if (!PyArg_ParseTuple(args, (char*)"LLOOO", &nside, &maxmatch, &raObj, &decObj, &radObj)) {
+    if (!PyArg_ParseTuple(args, (char*)"LOOO", &nside, &raObj, &decObj, &radObj)) {
         return -1;
     }
 
-    self->maxmatch=maxmatch;
     self->tree=NULL;
     self->hpix=NULL;
     self->pts=NULL;
 
     self->matches = match_vector_new();
 
-    //fprintf(stderr,"Initializing healpix struct, nside: %lld\n", nside);
     self->hpix = hpix_new((int64)nside);
     if (self->hpix==NULL) {
         err=1;
         goto _catalog_init_cleanup;
     }
 
-    //fprintf(stderr,"Initializing x,y,z points\n");
     self->pts = points_init(raObj, decObj, radObj);
     if (self->pts==NULL) {
         err=1;
         goto _catalog_init_cleanup;
     }
-    //fprintf(stderr,"Initializing tree\n");
+
     self->tree = create_tree(self->hpix, self->pts);
     if (self->tree==NULL) {
         err=1;
@@ -183,8 +179,7 @@ PySMatchCat_init(struct PySMatchCat* self, PyObject *args, PyObject *kwds)
 
 _catalog_init_cleanup:
     if (err != 0) {
-        free(self->pts);
-        self->pts=NULL;
+        vector_free(self->pts);
         self->hpix = hpix_delete(self->hpix);
         self->tree = tree_delete(self->tree);
         return -1;
@@ -243,7 +238,8 @@ static void domatch1(const struct PySMatchCat* self,
 
     if (node != NULL) {
         Point* pt=NULL;
-        size_t i=0, cat_ind=0;
+        size_t i=0;
+        int64_t cat_ind=0;
         double x=0,y=0,z=0;
         double cos_radius=0;
         hpix_eq2xyz(ra,dec,&x,&y,&z);
@@ -259,7 +255,7 @@ static void domatch1(const struct PySMatchCat* self,
 
             if (cos_angle > cos_radius) {
                 match.cat_ind=cat_ind;
-                match.input_ind=input_ind;
+                match.input_ind=(int64_t)input_ind;
                 match.cosdist=cos_angle;
                 vector_push(matches, match);
             }
@@ -308,12 +304,34 @@ static PyObject* PySMatchCat_match(struct PySMatchCat* self, PyObject *args)
 {
     PyObject* raObj=NULL;
     PyObject* decObj=NULL;
+    PY_LONG_LONG maxmatch=0;
 
-    if (!PyArg_ParseTuple(args, (char*)"OO", &raObj, &decObj)) {
+    if (!PyArg_ParseTuple(args, (char*)"LOO", &maxmatch,&raObj, &decObj)) {
         return NULL;
     }
 
+    self->maxmatch=maxmatch;
+
     domatch(self, raObj, decObj);
+    Py_RETURN_NONE;
+}
+
+static PyObject* PySMatchCat_copy_matches(struct PySMatchCat* self, PyObject *args)
+{
+    PyObject* matchesObj=NULL;
+    Match* matches=NULL;
+
+    if (!PyArg_ParseTuple(args, (char*)"O", &matchesObj)) {
+        return NULL;
+    }
+
+    matches = PyArray_DATA(matchesObj);
+
+    memmove(matches,
+            self->matches->data,
+            self->matches->size*sizeof(Match)
+    );
+
     Py_RETURN_NONE;
 }
 
@@ -322,9 +340,11 @@ static PyObject* PySMatchCat_match(struct PySMatchCat* self, PyObject *args)
 
 
 static PyMethodDef PySMatchCat_methods[] = {
-    {"get_nmatches",           (PyCFunction)PySMatchCat_nmatches,          METH_VARARGS,  "nmatches\n\nGet the nside for healpix."},
-    {"get_nside",              (PyCFunction)PySMatchCat_nside,          METH_VARARGS,  "nside\n\nGet the nside for healpix."},
-    {"match",              (PyCFunction)PySMatchCat_match,          METH_VARARGS,  "match\n\nMatch the catalog to the input ra,dec arrays."},
+    {"get_nmatches",           (PyCFunction)PySMatchCat_nmatches,          METH_VARARGS,  "Get the number of matches."},
+    {"get_nside",              (PyCFunction)PySMatchCat_nside,          METH_VARARGS,  "Get the nside for healpix."},
+    {"match",              (PyCFunction)PySMatchCat_match,          METH_VARARGS,  
+        "Match the catalog to the input ra,dec arrays."},
+    {"_copy_matches",              (PyCFunction)PySMatchCat_copy_matches,          METH_VARARGS,  "Copy the matches into the input array."},
     {NULL}  /* Sentinel */
 };
 

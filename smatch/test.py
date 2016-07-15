@@ -1,7 +1,7 @@
 from __future__ import print_function
 from sys import stderr
 import numpy
-from ._smatch import Catalog
+from .smatch import Catalog
 
 def test(maxmatch=1, rand=True, npts=100, verbose=False):
     if rand:
@@ -13,10 +13,10 @@ def test(maxmatch=1, rand=True, npts=100, verbose=False):
 
     nside=512
     radii=0.1*numpy.random.rand(ra.size) + 2.0/3600.
-    cat=Catalog(nside,maxmatch,ra,dec,radii)
+    cat=Catalog(nside,ra,dec,radii)
 
     print('Doing match')
-    cat.match(ra,dec)
+    cat.match(ra,dec, maxmatch=maxmatch)
     print('found',cat.get_nmatches(),'matches')
     return
 
@@ -44,18 +44,24 @@ def test_against_htm(maxmatch=1, npts=100, verbose=False,
     depth=12
 
     dorad=0
-    ra = 10.0 + 0.1*numpy.random.rand(npts)
-    dec = 10.0 + 0.1*numpy.random.rand(npts)
+    ra = 10.0 + numpy.random.rand(npts)
+    dec = 10.0 + numpy.random.rand(npts)
 
-    radii=numpy.zeros(ra.size) + radius
-    cat=Catalog(nside,maxmatch,ra,dec,radii)
+    #radii=numpy.zeros(ra.size) + radius
+    radii=radius*(1.0 + 0.1*numpy.random.uniform(size=ra.size,low=-0.1,high=0.1))
+    #radii=radius
+    cat=Catalog(ra,dec,radii, nside=nside)
+    print("initial nmatches (should be 0):",cat.nmatches)
 
     print(stderr,'Doing healpix match')
     t0=time.time()
-    cat.match(ra,dec)
+    cat.match(ra,dec, maxmatch=maxmatch)
     eu.misc.ptime(time.time()-t0)
 
-    print('found',cat.get_nmatches(),'matches')
+    print('found',cat.nmatches,'matches')
+    matches=cat.matches
+
+    eu.misc.colprint(matches['i1'],matches['i2'],matches['cosdist'],numpy.arccos(matches['cosdist'])*180.0/numpy.pi)
 
     print('doing htm match')
     h=eu.htm.HTM(depth)
@@ -69,6 +75,10 @@ def test_against_htm(maxmatch=1, npts=100, verbose=False,
         import biggles
         plt=biggles.plot(ra,dec,visible=False)
 
-        circles=biggles.Circles(ra, dec, radii, color='red')
+        if numpy.isscalar(radii):
+            rplot = numpy.zeros(ra.size)+radius
+        else:
+            rplot=radii
+        circles=biggles.Circles(ra, dec, rplot, color='red')
         plt.add(circles)
         plt.show()

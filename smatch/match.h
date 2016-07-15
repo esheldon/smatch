@@ -4,8 +4,8 @@
 #include <stdint.h>
 
 typedef struct {
-    size_t cat_ind;
-    size_t input_ind;
+    int64_t cat_ind;
+    int64_t input_ind;
     double cosdist;
 } Match;
 
