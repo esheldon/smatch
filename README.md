@@ -1,6 +1,6 @@
 A python code for matching points on the sphere using healpix.
 
-examples
+Examples
 --------
 
 ```python
@@ -14,10 +14,12 @@ maxmatch=1 # return closest match
 matches = smatch.match(ra1, dec2, radius, ra2, dec2,
                        nside=nside, maxmatch=maxmatch)
 
+# in the above call, radius can be a scalar or the
+# same size as ra1,dec1
 
-# the match structure holds the indices of the matches
-# from each data set, and the cosine of the distance
-# between them
+# the output matches structure holds the indices of the matches from each data
+# set, and the cosine of the distance between them
+
 print(m.dtype.descr)
     [('i1', '<i8'), ('i2', '<i8'), ('cosdist', '<f8')]
 
