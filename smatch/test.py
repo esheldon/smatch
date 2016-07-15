@@ -51,6 +51,7 @@ def test_against_htm(maxmatch=1, npts=100, verbose=False,
     radii=radius*(1.0 + 0.1*numpy.random.uniform(size=ra.size,low=-0.1,high=0.1))
     #radii=radius
     cat=Catalog(ra,dec,radii, nside=nside)
+    print(cat)
     print("initial nmatches (should be 0):",cat.nmatches)
 
     print(stderr,'Doing healpix match')
@@ -61,7 +62,7 @@ def test_against_htm(maxmatch=1, npts=100, verbose=False,
     print('found',cat.nmatches,'matches')
     matches=cat.matches
 
-    eu.misc.colprint(matches['i1'],matches['i2'],matches['cosdist'],numpy.arccos(matches['cosdist'])*180.0/numpy.pi)
+    #eu.misc.colprint(matches['i1'],matches['i2'],matches['cosdist'],numpy.arccos(matches['cosdist'])*180.0/numpy.pi)
 
     print('doing htm match')
     h=eu.htm.HTM(depth)

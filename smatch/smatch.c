@@ -209,9 +209,14 @@ PySMatchCat_repr(struct PySMatchCat* self) {
 
 
 static PyObject *
-PySMatchCat_nside(struct PySMatchCat* self) {
+PySMatchCat_hpix_nside(struct PySMatchCat* self) {
     return Py_BuildValue("l", self->hpix->nside);
 }
+static PyObject *
+PySMatchCat_hpix_area(struct PySMatchCat* self) {
+    return Py_BuildValue("d", hpix_area(self->hpix->nside));
+}
+
 
 static PyObject *
 PySMatchCat_nmatches(struct PySMatchCat* self) {
@@ -341,7 +346,8 @@ static PyObject* PySMatchCat_copy_matches(struct PySMatchCat* self, PyObject *ar
 
 static PyMethodDef PySMatchCat_methods[] = {
     {"get_nmatches",           (PyCFunction)PySMatchCat_nmatches,          METH_VARARGS,  "Get the number of matches."},
-    {"get_nside",              (PyCFunction)PySMatchCat_nside,          METH_VARARGS,  "Get the nside for healpix."},
+    {"get_hpix_nside",              (PyCFunction)PySMatchCat_hpix_nside,          METH_VARARGS,  "Get the nside for healpix."},
+    {"get_hpix_area",              (PyCFunction)PySMatchCat_hpix_area,          METH_VARARGS,  "Get the nside for healpix."},
     {"match",              (PyCFunction)PySMatchCat_match,          METH_VARARGS,  
         "Match the catalog to the input ra,dec arrays."},
     {"_copy_matches",              (PyCFunction)PySMatchCat_copy_matches,          METH_VARARGS,  "Copy the matches into the input array."},
