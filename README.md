@@ -5,7 +5,7 @@ examples
 
 ```python
 
-#For quick matches, use the match() function
+# For quick matches, use the match() function
 
 import smatch
 
@@ -30,14 +30,14 @@ some_matches = smatch.match(ra1, dec2, radius, ra2, dec2,
                             nside=nside, maxmatch=3)
 
 # write the matches to a file, rather than keeping in memory.
-# useful of the number of matches is large
+# useful if the number of matches is large
 smatch.match2file(ra1, dec2, radius, ra2, dec2, file="matches.dat")
 
 # you can read them later
-matches=smatch.read_matches(filename)
+matches=smatch.read_matches("matches.dat")
 
-# To match the same data set to multiple other data sets, use
-# a Catalog
+# A more flexibile interface is a Catalog.  For example it can
+# be used to match the same data set to multiple other data sets
 
 cat=smatch.Catalog(ra1, dec1, radius, nside=nside)
 print(cat)
@@ -51,5 +51,8 @@ cat.match(ra3, dec3, maxmatch=maxmatch)
 
 print("found:",cat.nmatches,"matches")
 matches = cat.matches
+
+# match to a file
+cat.match2file(filename, ra3, dec3, maxmatch=maxmatch)
 
 ```
