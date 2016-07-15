@@ -6,7 +6,7 @@ from . import smatch
 from .smatch import Catalog
 
 def test(maxmatch=1, npts=100,
-         nside=512, depth=12, radius=0.1,
+         depth=12, radius=0.1,
          seed=None, doplot=False):
 
     numpy.random.seed(seed)
@@ -15,7 +15,7 @@ def test(maxmatch=1, npts=100,
     dec = 10.0 + numpy.random.rand(npts)
 
     radii=radius*(1.0 + 0.1*numpy.random.uniform(size=ra.size,low=-0.1,high=0.1))
-    cat=Catalog(ra, dec, radii, nside=nside)
+    cat=Catalog(ra, dec, radii)
 
     print(cat)
     print("initial nmatches (should be 0):",cat.nmatches)
@@ -28,7 +28,7 @@ def test(maxmatch=1, npts=100,
         plot_points_and_radii(ra, dec, radii)
 
 def test_file(filename, maxmatch=1, npts=100,
-              nside=512, depth=12, radius=0.1,
+              depth=12, radius=0.1,
               seed=None, doplot=False):
     numpy.random.seed(seed)
 
@@ -36,7 +36,7 @@ def test_file(filename, maxmatch=1, npts=100,
     dec = 10.0 + numpy.random.rand(npts)
 
     radii=radius*(1.0 + 0.1*numpy.random.uniform(size=ra.size,low=-0.1,high=0.1))
-    cat=Catalog(ra, dec, radii, nside=nside)
+    cat=Catalog(ra, dec, radii)
 
     print(cat)
     print("initial nmatches (should be 0):",cat.nmatches)
@@ -54,7 +54,7 @@ def test_file(filename, maxmatch=1, npts=100,
     return matches
 
 def test_convenience(maxmatch=1, npts=100,
-                     nside=512, depth=12, radius=0.1,
+                     depth=12, radius=0.1,
                      seed=None, doplot=False):
     numpy.random.seed(seed)
 
@@ -63,7 +63,7 @@ def test_convenience(maxmatch=1, npts=100,
 
     radii=radius*(1.0 + 0.1*numpy.random.uniform(size=ra.size,low=-0.1,high=0.1))
 
-    matches = smatch.match(ra, dec, radii, ra, dec, nside=nside, maxmatch=maxmatch)
+    matches = smatch.match(ra, dec, radii, ra, dec, maxmatch=maxmatch)
 
     print("nmatches:",matches.size)
     if doplot:
@@ -73,7 +73,7 @@ def test_convenience(maxmatch=1, npts=100,
 
 
 def test_against_htm(maxmatch=1, npts=100,
-                     nside=512, depth=12, radius=0.1, seed=None, doplot=False):
+                     depth=12, radius=0.1, seed=None, doplot=False):
 
     import time
     import esutil as eu
@@ -88,7 +88,7 @@ def test_against_htm(maxmatch=1, npts=100,
     #radii=numpy.zeros(ra.size) + radius
     radii=radius*(1.0 + 0.1*numpy.random.uniform(size=ra.size,low=-0.1,high=0.1))
     #radii=radius
-    cat=Catalog(ra,dec,radii, nside=nside)
+    cat=Catalog(ra,dec,radii)
     print(cat)
     print("initial nmatches (should be 0):",cat.nmatches)
 
