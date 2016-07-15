@@ -62,10 +62,9 @@ matches = cat.matches
 
 # using the convenience function
 fname="matches.dat"
-smatch.match2file(ra1, dec2, radius, ra2, dec2,
-                  file=fname)
+smatch.match(ra1, dec2, radius, ra2, dec2, file=fname)
 
-# using a the catalog
+# using a catalog
 cat.match2file(fname, ra3, dec3, maxmatch=maxmatch)
 
 
