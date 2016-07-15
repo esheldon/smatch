@@ -55,10 +55,10 @@ void hpix_disc_intersect(
 
     // this is from the f90 code
     // this number is acos(2/3)
-    double fudge = 0.84106867056793033/hpix->nside; // 1.071* half pixel size
+    //double fudge = 0.84106867056793033/hpix->nside; // 1.071* half pixel size
 
     // this is from the c++ code
-    //double fudge = 1.362*M_PI/(4*hpix->nside);
+    double fudge = 1.362*M_PI/(4*hpix->nside);
 
     radius += fudge;
     hpix_disc_contains(hpix, x, y, z, radius, listpix);
