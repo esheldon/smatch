@@ -5,34 +5,27 @@ import numpy
 from . import smatch
 from .smatch import Catalog
 
-def test(maxmatch=1, rand=True, npts=100, file=None):
-    if rand:
-        ra = 10.0 + 0.1*numpy.random.rand(npts)
-        dec = 10.0 + 0.1*numpy.random.rand(npts)
-    else:
-        ra = numpy.linspace(10.0,10.1,npts)
-        dec = numpy.linspace(10.0,10.1,npts)
+def test(maxmatch=1, npts=100,
+         nside=512, depth=12, radius=0.1,
+         seed=None, doplot=False):
 
-    nside=512
-    radii=0.1*numpy.random.rand(ra.size) + 2.0/3600.
-    cat=Catalog(nside,ra,dec,radii)
+    numpy.random.seed(seed)
 
-    print('Doing match')
-    cat.match(ra,dec, maxmatch=maxmatch)
-    print('found',cat.get_nmatches(),'matches')
-    return
+    ra = 10.0 + numpy.random.rand(npts)
+    dec = 10.0 + numpy.random.rand(npts)
 
-    for mc, mi, d in zip(mcat, minput, dist):
-        #print '%d %d %e' % (mc,mi,d*3600)
-        if mc == mi:
-            spc1=''
-            spc2='  '
-        else:
-            spc1='  '
-            spc2=''
-        print('%s%.15e %.15e %.15e %.15e%s %2d %2d %.15e' \
-                % (spc1,ra[mc],dec[mc],ra[mi],dec[mi],spc2,
-                   mc,mi,d*3600))
+    radii=radius*(1.0 + 0.1*numpy.random.uniform(size=ra.size,low=-0.1,high=0.1))
+    cat=Catalog(ra, dec, radii, nside=nside)
+
+    print(cat)
+    print("initial nmatches (should be 0):",cat.nmatches)
+
+    cat.match(ra, dec, maxmatch=maxmatch)
+
+    print("nmatches:",cat.nmatches)
+
+    if doplot:
+        plot_points_and_radii(ra, dec, radii)
 
 def test_file(filename, maxmatch=1, npts=100,
               nside=512, depth=12, radius=0.1,

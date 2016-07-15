@@ -195,11 +195,17 @@ _catalog_init_cleanup:
 static void
 PySMatchCat_dealloc(struct PySMatchCat* self)
 {
-    //self->tree = tree_delete(self->tree);
+
     vector_free(self->pts);
     self->hpix = hpix_delete(self->hpix);
     self->tree = tree_delete(self->tree);
+
+#if PY_MAJOR_VERSION >= 3
+    Py_TYPE(self)->tp_free((PyObject*)self);
+#else
     self->ob_type->tp_free((PyObject*)self);
+#endif
+
 }
 
 
@@ -207,7 +213,12 @@ static PyObject *
 PySMatchCat_repr(struct PySMatchCat* self) {
     char repr[256];
     sprintf(repr, "Catalog\n    hpix nside: %ld", self->hpix->nside);
-    return PyString_FromString(repr);
+#if PY_MAJOR_VERSION >= 3
+    // bytes
+    return Py_BuildValue("y",repr);
+#else
+    return Py_BuildValue("s",repr);
+#endif
 }
 
 
@@ -559,8 +570,12 @@ static PyMethodDef PySMatchCat_methods[] = {
 
 
 static PyTypeObject PyCatalogType = {
+#if PY_MAJOR_VERSION >= 3
+    PyVarObject_HEAD_INIT(NULL, 0)
+#else
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
+#endif
     "_smatch.Catalog",             /*tp_name*/
     sizeof(struct PySMatchCat), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -614,22 +629,64 @@ static PyMethodDef smatch_module_methods[] = {
 };
 
 
+#if PY_MAJOR_VERSION >= 3
+    static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "_smatch",      /* m_name */
+        "Defines the catalog class and some methods",  /* m_doc */
+        -1,                  /* m_size */
+        smatch_module_methods, /* m_methods */
+        NULL,                /* m_reload */
+        NULL,                /* m_traverse */
+        NULL,                /* m_clear */
+        NULL,                /* m_free */
+    };
+#endif
+
+
+
 #ifndef PyMODINIT_FUNC  /* declarations for DLL import/export */
 #define PyMODINIT_FUNC void
 #endif
+
 PyMODINIT_FUNC
+#if PY_MAJOR_VERSION >= 3
+PyInit__smatch(void) 
+#else
 init_smatch(void) 
+#endif
 {
     PyObject* m;
 
     PyCatalogType.tp_new = PyType_GenericNew;
+
+
+#if PY_MAJOR_VERSION >= 3
+    if (PyType_Ready(&PyCatalogType) < 0) {
+        return NULL;
+    }
+    m = PyModule_Create(&moduledef);
+    if (m==NULL) {
+        return NULL;
+    }
+
+#else
+
     if (PyType_Ready(&PyCatalogType) < 0)
         return;
 
     m = Py_InitModule3("_smatch", smatch_module_methods, "Define module methods.");
+    if (m==NULL) {
+        return;
+    }
+#endif
 
     Py_INCREF(&PyCatalogType);
     PyModule_AddObject(m, "Catalog", (PyObject *)&PyCatalogType);
 
     import_array();
+
+#if PY_MAJOR_VERSION >= 3
+    return m;
+#endif
 }
