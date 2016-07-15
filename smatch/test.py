@@ -92,7 +92,7 @@ def test_against_htm(maxmatch=1, npts=100,
     print(cat)
     print("initial nmatches (should be 0):",cat.nmatches)
 
-    print(stderr,'Doing healpix match')
+    print('Doing healpix match')
     t0=time.time()
     cat.match(ra,dec, maxmatch=maxmatch)
     eu.misc.ptime(time.time()-t0)
