@@ -23,6 +23,12 @@ matches = smatch.match(ra1, dec2, radius, ra2, dec2,
 print(m.dtype.descr)
     [('i1', '<i8'), ('i2', '<i8'), ('cosdist', '<f8')]
 
+# access via the indices. These should match up one to one
+ra1matched  = ra1[ matches['i1'] ]
+dec1matched = dec1[ matches['i1'] ]
+ra2matched  = ra2[ matches['i2'] ]
+dec2matched = dec2[ matches['i2'] ]
+
 # set maxmatch=0 to get all matches, set to a positive
 # integer to return that many closest matches
 
