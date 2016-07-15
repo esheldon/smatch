@@ -156,18 +156,18 @@ lvector* lvector_zeros(size_t num) {
 
 
 lvector* lvector_ones(size_t num) {
-
+    size_t i=0;
     lvector* self=lvector_new();
-    for (size_t i=0; i<num; i++) {
+    for (i=0; i<num; i++) {
         vector_push(self,1);
     }
     return self;
 }
 
 lvector* lvector_range(long min, long max) {
-
+    long i=0;
     lvector* self=lvector_new();
-    for (long i=min; i<max; i++) {
+    for (i=min; i<max; i++) {
         vector_push(self,i);
     }
     
