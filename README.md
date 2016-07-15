@@ -98,3 +98,10 @@ tradeoff in memory usage.  4096 or 2048 are probably sufficient
 for this use case.
 
 ![Timings vs nside](data/smatch-times.png?raw=true "Timings vs Nside for DES catalogs")
+
+
+TODO
+-----
+
+Memory usage can be high due to creating the internal catalog of x,y,z.  How
+slowed are the timings if these are calculated on the fly?

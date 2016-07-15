@@ -104,6 +104,7 @@ static point_vector* points_init(PyObject* raObj, PyObject* decObj, PyObject* ra
         if (nrad > 1) {
             radptr = PyArray_GETPTR1(radObj, i);
             pt->radius = (*radptr)*D2R;
+            pt->cos_radius = cos( pt->radius );
         }
 
     }
@@ -262,7 +263,7 @@ static void domatch1(const struct PySMatchCat* self,
     size_t i=0;
     int64_t cat_ind=0;
     double x=0,y=0,z=0;
-    double cos_radius=0, cos_angle=0;
+    double cos_angle=0;
 
     Match match={0};
 
@@ -282,10 +283,9 @@ static void domatch1(const struct PySMatchCat* self,
 
             pt = &self->pts->data[cat_ind];
 
-            cos_radius = cos(pt->radius);
             cos_angle = pt->x*x + pt->y*y + pt->z*z;
 
-            if (cos_angle > cos_radius) {
+            if (cos_angle > pt->cos_radius) {
                 match.cat_ind=cat_ind;
                 match.input_ind=(int64_t)input_ind;
                 match.cosdist=cos_angle;
