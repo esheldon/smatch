@@ -65,7 +65,7 @@ fname="matches.dat"
 smatch.match(ra1, dec2, radius, ra2, dec2, file=fname)
 
 # using a catalog
-cat.match2file(fname, ra3, dec3, maxmatch=maxmatch)
+cat.match2file(fname, ra3, dec3)
 
 
 # you can read them later
@@ -80,9 +80,9 @@ matches=smatch.read_matches(fname)
 from esutil.recfile import Recfile
 dtype=smatch.smatch_dtype
 
+# read 1000 elements starting at 10000
 start=10000
-end=20000
+end=11000
 with Recfile(filename, "r", dtype=dtype, delim=' ') as robj:
     data=robj[start:end]
-
 ```
