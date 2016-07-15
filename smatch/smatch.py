@@ -55,7 +55,7 @@ def match(ra1, dec1, radius1, ra2, dec2,
     cat = Catalog(ra1, dec1, radius1, nside=nside)
 
     if file is not None:
-        cat.match2file(ra2, dec2, maxmatch=maxmatch)
+        cat.match2file(file, ra2, dec2, maxmatch=maxmatch)
         return None
     else:
         cat.match(ra2, dec2, maxmatch=maxmatch)
