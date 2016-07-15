@@ -6,7 +6,9 @@ from . import _smatch
 # area 0.013114 square degrees
 NSIDE_DEFAULT=512
 
-def match(ra1, dec1, radius1, ra2, dec2, nside=NSIDE_DEFAULT, maxmatch=1):
+def match(ra1, dec1, radius1, ra2, dec2,
+          nside=NSIDE_DEFAULT, maxmatch=1,
+          file=None):
     """
     match points on the sphere
 
@@ -34,6 +36,9 @@ def match(ra1, dec1, radius1, ra2, dec2, nside=NSIDE_DEFAULT, maxmatch=1):
         matches will be kept.  Default is 1, which implles keepin the
         closest match.  Set to <= 0 to keep all matches.
 
+    file: string
+        File in which to write matches.
+
     returns
     -------
     matchcat: structured array
@@ -44,11 +49,17 @@ def match(ra1, dec1, radius1, ra2, dec2, nside=NSIDE_DEFAULT, maxmatch=1):
                 to match2file)
             cos(dist): cosine of the angular distance
                 between the points
+
+    If a file is sent, None is returned
     """
     cat = Catalog(ra1, dec1, radius1, nside=nside)
 
-    cat.match(ra2, dec2, maxmatch=maxmatch)
-    return cat.get_matches()
+    if file is not None:
+        cat.match2file(ra2, dec2, maxmatch=maxmatch)
+        return None
+    else:
+        cat.match(ra2, dec2, maxmatch=maxmatch)
+        return cat.get_matches()
 
 class Catalog(_smatch.Catalog):
     """
@@ -146,7 +157,7 @@ class Catalog(_smatch.Catalog):
         )
 
         nmatches=self.get_nmatches()
-        matches = numpy.zeros(nmatches, dtype=_match_dtype)
+        matches = numpy.zeros(nmatches, dtype=match_dtype)
 
         if nmatches > 0:
             super(Catalog,self)._copy_matches(matches)
@@ -208,7 +219,7 @@ def read_matches(filename):
 
     """
     nmatches = _smatch._count_lines(filename)
-    matches = numpy.zeros(nmatches, dtype=_match_dtype)
+    matches = numpy.zeros(nmatches, dtype=match_dtype)
 
     _smatch._load_matches(filename, matches)
     return matches
@@ -242,7 +253,7 @@ def _get_arrays(ra, dec, radius=None):
         return ra,dec
 
 # data type of the match structure
-_match_dtype=[
+match_dtype=[
     ('i1','i8'),
     ('i2','i8'),
     ('cosdist','f8'),

@@ -37,12 +37,6 @@ all_matches = smatch.match(ra1, dec2, radius, ra2, dec2,
 some_matches = smatch.match(ra1, dec2, radius, ra2, dec2,
                             nside=nside, maxmatch=3)
 
-# write the matches to a file, rather than keeping in memory.
-# useful if the number of matches is large
-smatch.match2file(ra1, dec2, radius, ra2, dec2, file="matches.dat")
-
-# you can read them later
-matches=smatch.read_matches("matches.dat")
 
 # A more flexibile interface is a Catalog.  For example it can
 # be used to match the same data set to multiple other data sets
@@ -60,7 +54,36 @@ cat.match(ra3, dec3, maxmatch=maxmatch)
 print("found:",cat.nmatches,"matches")
 matches = cat.matches
 
-# match to a file
-cat.match2file(filename, ra3, dec3, maxmatch=maxmatch)
+#
+# Writing matches to  file
+# 
+# This useful if the number of matches is large, and cannot be
+# held in memory
+
+# using the convenience function
+fname="matches.dat"
+smatch.match2file(ra1, dec2, radius, ra2, dec2,
+                  file=fname)
+
+# using a the catalog
+cat.match2file(fname, ra3, dec3, maxmatch=maxmatch)
+
+
+# you can read them later
+matches=smatch.read_matches(fname)
+
+# if the matches are too large to read, you can use packages
+# such as these to read subsets
+# recfile: https://github.com/esheldon/recfile
+# esutil.recfile: https://github.com/esheldon/esutil
+# (the esutil version is a copy of recfile)
+
+from esutil.recfile import Recfile
+dtype=smatch.smatch_dtype
+
+start=10000
+end=20000
+with Recfile(filename, "r", dtype=dtype, delim=' ') as robj:
+    data=robj[start:end]
 
 ```
