@@ -15,6 +15,10 @@ struct PySMatchCat {
     struct healpix* hpix;
     struct tree_node* tree;
 
+    // we keep this separately, for the case of writing
+    // matches to a file
+    int64 nmatches;
+
     match_vector *matches;
 
 };
@@ -69,13 +73,13 @@ static point_vector* points_init(PyObject* raObj, PyObject* decObj, PyObject* ra
     npy_intp n=0, i=0, nrad=0;
     n = PyArray_SIZE(raObj);
     if (n <= 0) {
-        PyErr_SetString(PyExc_ValueError, "Entered lon/lat must have size > 0\n");
+        PyErr_SetString(PyExc_ValueError, "Entered ra/dec must have size > 0\n");
         return NULL;
     }
     nrad = PyArray_SIZE(radObj);
     if (nrad != n && nrad != 1) {
         PyErr_Format(PyExc_ValueError, 
-                     "radii must be size 1 or same length as ra,ded (%ld).  Got %ld\n",n,nrad);
+                     "radii must be size 1 or same length as ra,dec (%ld).  Got %ld\n",n,nrad);
         return NULL;
     }
 
@@ -220,7 +224,19 @@ PySMatchCat_hpix_area(struct PySMatchCat* self) {
 
 static PyObject *
 PySMatchCat_nmatches(struct PySMatchCat* self) {
-    return Py_BuildValue("l", self->matches->size);
+    return Py_BuildValue("l", self->nmatches);
+}
+
+static PyObject* PySMatchCat_set_nmatches(struct PySMatchCat* self, PyObject *args)
+{
+    PY_LONG_LONG nmatches=0;
+
+    if (!PyArg_ParseTuple(args, (char*)"L", &nmatches)) {
+        return NULL;
+    }
+
+    self->nmatches=nmatches;
+    Py_RETURN_NONE;
 }
 
 
@@ -233,6 +249,12 @@ static void domatch1(const struct PySMatchCat* self,
     int64 hpixid=0;
     struct tree_node* node=NULL;
     int64 half_npix=0;
+
+    size_t i=0;
+    int64_t cat_ind=0;
+    double x=0,y=0,z=0;
+    double cos_radius=0, cos_angle=0;
+
     Match match={0};
 
     vector_resize(matches,0);
@@ -243,10 +265,6 @@ static void domatch1(const struct PySMatchCat* self,
 
     if (node != NULL) {
         Point* pt=NULL;
-        size_t i=0;
-        int64_t cat_ind=0;
-        double x=0,y=0,z=0;
-        double cos_radius=0;
         hpix_eq2xyz(ra,dec,&x,&y,&z);
 
         for (i=0; i<node->indices->size; i++) {
@@ -256,7 +274,7 @@ static void domatch1(const struct PySMatchCat* self,
             pt = &self->pts->data[cat_ind];
 
             cos_radius = cos(pt->radius);
-            double cos_angle = pt->x*x + pt->y*y + pt->z*z;
+            cos_angle = pt->x*x + pt->y*y + pt->z*z;
 
             if (cos_angle > cos_radius) {
                 match.cat_ind=cat_ind;
@@ -284,6 +302,7 @@ static int domatch(struct PySMatchCat* self, PyObject* raObj, PyObject* decObj) 
 
     // always reset the match structure
     vector_clear(self->matches);
+    self->nmatches=0;
 
     n = PyArray_SIZE(raObj);
     for (i=0; i<n ; i++) {
@@ -298,6 +317,7 @@ static int domatch(struct PySMatchCat* self, PyObject* raObj, PyObject* decObj) 
         }
 
         push_matches(self->matches, new_matches);
+        self->nmatches += new_matches->size;
 
     }
     vector_free(new_matches);
@@ -305,6 +325,11 @@ static int domatch(struct PySMatchCat* self, PyObject* raObj, PyObject* decObj) 
     return 1;
 }
 
+/*
+
+   do the matching and fill in the self->matches array of structures
+
+*/
 static PyObject* PySMatchCat_match(struct PySMatchCat* self, PyObject *args)
 {
     PyObject* raObj=NULL;
@@ -321,6 +346,182 @@ static PyObject* PySMatchCat_match(struct PySMatchCat* self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+static int domatch2file(struct PySMatchCat* self,
+                        PyObject* raObj,
+                        PyObject* decObj,
+                        const char* filename) {
+    size_t i=0, j=0, n=0;
+    double *raptr=NULL, *decptr=NULL;
+    FILE* fobj=NULL;
+    const Match *m=NULL;
+    match_vector* matches = match_vector_new();
+
+    // always reset the match structure, even though
+    // we are writing to a file
+    vector_clear(self->matches);
+    self->nmatches=0;
+
+    fobj=fopen(filename, "w");
+    if (fobj == NULL) {
+        return 0;
+    }
+
+    n = PyArray_SIZE(raObj);
+    for (i=0; i<n ; i++) {
+
+        raptr=PyArray_GETPTR1(raObj, i);
+        decptr=PyArray_GETPTR1(decObj, i);
+
+        domatch1(self, *raptr, *decptr, i, matches);
+
+        for (j=0; j<matches->size; j++) {
+            m=&matches->data[j];
+            fprintf(fobj, "%ld %ld %.16g\n", m->cat_ind, m->input_ind, m->cosdist);
+        }
+        self->nmatches += matches->size;
+
+    }
+    vector_free(matches);
+
+    fclose(fobj);
+
+    return 1;
+}
+
+
+
+/*
+
+   do the matching and write to the indicated file
+
+*/
+static PyObject* PySMatchCat_match2file(struct PySMatchCat* self, PyObject *args)
+{
+    PyObject* raObj=NULL;
+    PyObject* decObj=NULL;
+    PY_LONG_LONG maxmatch=0;
+    const char *filename=NULL;
+
+    if (!PyArg_ParseTuple(args, (char*)"LOOs", &maxmatch, &raObj, &decObj, &filename)) {
+        return NULL;
+    }
+
+    self->maxmatch=maxmatch;
+
+    domatch2file(self, raObj, decObj, filename);
+    Py_RETURN_NONE;
+}
+
+int64_t count_lines(FILE* fobj)
+{
+
+    char ch;
+	int64_t nlines=0;
+
+	while(!feof(fobj))
+	{
+		ch = fgetc(fobj);
+		if(ch == '\n')
+		{
+			nlines++;
+		}
+	}
+
+	return nlines;
+}
+
+static PyObject *
+PySMatchCat_count_lines(PyObject* self, PyObject* args)
+{
+    const char *filename=NULL;
+    FILE* fobj=NULL;
+    int64_t nlines=0;
+
+    if (!PyArg_ParseTuple(args, (char*)"s", &filename)) {
+        return NULL;
+    }
+
+    fobj=fopen(filename, "r");
+    if (fobj == NULL) {
+        PyErr_Format(PyExc_IOError, "Could not open file: '%s'\n", filename);
+        return NULL;
+    }
+
+    nlines = count_lines(fobj);
+
+    fclose(fobj);
+
+    return Py_BuildValue("l", nlines);
+
+}
+
+/*
+
+   read from a match file
+
+   i1 i2 cosdist
+
+   i1->catalog index
+   i2->secondary or input index for the match2file routine
+   cosdist-> cos(angular distance)
+
+*/
+
+static PyObject* PySMatchCat_load_matches(PyObject* self, PyObject *args)
+{
+    const char *filename=NULL;
+    FILE* fobj=NULL;
+    int nread=0, ncols=3;
+    npy_intp nmatches=0, i=0;
+    Match *match=NULL;
+
+    PyObject *matchesObj=NULL;
+
+    if (!PyArg_ParseTuple(args, (char*)"sO", &filename, &matchesObj)) {
+        return NULL;
+    }
+
+    fobj=fopen(filename, "r");
+    if (fobj == NULL) {
+        PyErr_Format(PyExc_IOError, "Could not open file: '%s'\n", filename);
+        return NULL;
+    }
+
+    nmatches = PyArray_SIZE(matchesObj);
+
+    for (i=0; i<nmatches; i++) {
+        match = (Match* ) PyArray_GETPTR1(matchesObj, i);
+        nread=fscanf(fobj,
+                     "%ld %ld %lf\n", 
+                     &match->cat_ind,
+                     &match->input_ind,
+                     &match->cosdist);
+        if (nread != ncols) {
+            PyErr_Format(PyExc_IOError,
+                         "Error: only read %d at line %ld of file: '%s'\n", nread,
+                         i+1,
+                         filename);
+            goto _load_matches_bail;
+        }
+    }
+
+_load_matches_bail:
+    fclose(fobj);
+    if (nread != ncols) {
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+
+
+/*
+   Copy into the given structured array.
+
+   No error checking is performed here, set up the data in python
+
+*/
 static PyObject* PySMatchCat_copy_matches(struct PySMatchCat* self, PyObject *args)
 {
     PyObject* matchesObj=NULL;
@@ -346,10 +547,11 @@ static PyObject* PySMatchCat_copy_matches(struct PySMatchCat* self, PyObject *ar
 
 static PyMethodDef PySMatchCat_methods[] = {
     {"get_nmatches",           (PyCFunction)PySMatchCat_nmatches,          METH_VARARGS,  "Get the number of matches."},
+    {"_set_nmatches",           (PyCFunction)PySMatchCat_set_nmatches,          METH_VARARGS,  "Set the number of matches, useful when reading from a file."},
     {"get_hpix_nside",              (PyCFunction)PySMatchCat_hpix_nside,          METH_VARARGS,  "Get the nside for healpix."},
     {"get_hpix_area",              (PyCFunction)PySMatchCat_hpix_area,          METH_VARARGS,  "Get the nside for healpix."},
-    {"match",              (PyCFunction)PySMatchCat_match,          METH_VARARGS,  
-        "Match the catalog to the input ra,dec arrays."},
+    {"match",              (PyCFunction)PySMatchCat_match,          METH_VARARGS,  "Match the catalog to the input ra,dec arrays."},
+    {"match2file",              (PyCFunction)PySMatchCat_match2file,          METH_VARARGS,  "Match the catalog to the input ra,dec arrays and write results to a file."},
     {"_copy_matches",              (PyCFunction)PySMatchCat_copy_matches,          METH_VARARGS,  "Copy the matches into the input array."},
     {NULL}  /* Sentinel */
 };
@@ -406,8 +608,9 @@ static PyTypeObject PyCatalogType = {
 
 
 
-static PyMethodDef smatchertype_methods[] = {
-    {NULL}  /* Sentinel */
+static PyMethodDef smatch_module_methods[] = {
+    {"_count_lines",      (PyCFunction)PySMatchCat_count_lines, METH_VARARGS,  "count the lines in the specified file."},
+    {"_load_matches",              (PyCFunction)PySMatchCat_load_matches,          METH_VARARGS,  "Load matches from the specifed filename."},
 };
 
 
@@ -423,7 +626,7 @@ init_smatch(void)
     if (PyType_Ready(&PyCatalogType) < 0)
         return;
 
-    m = Py_InitModule3("_smatch", smatchertype_methods, "Define smatcher type and methods.");
+    m = Py_InitModule3("_smatch", smatch_module_methods, "Define module methods.");
 
     Py_INCREF(&PyCatalogType);
     PyModule_AddObject(m, "Catalog", (PyObject *)&PyCatalogType);

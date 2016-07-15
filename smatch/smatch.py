@@ -3,10 +3,56 @@ from sys import stderr
 import numpy
 from . import _smatch
 
+# area 0.013114 square degrees
+NSIDE_DEFAULT=512
+
+def match(ra1, dec1, radius1, ra2, dec2, nside=NSIDE_DEFAULT, maxmatch=1):
+    """
+    match points on the sphere
+
+    parameters
+    ----------
+
+    ra1: array
+        right ascension array 1
+    dec1: array
+        declination array 1 same size as ra1
+    radius: array or scalar
+        radius around each point to search; can be a scalar
+        or same size as ra1/dec1.
+
+    ra2: array
+        right ascension array 2
+    dec2: array
+        declination array 2 same size as ra2
+
+    nside: int, optional
+        nside for the healpix layout. Default 512
+
+    maxmatch: int, optional
+        maximum number of matches to allow per point. The closest maxmatch
+        matches will be kept.  Default is 1, which implles keepin the
+        closest match.  Set to <= 0 to keep all matches.
+
+    returns
+    -------
+    matchcat: structured array
+        Structured array with fields
+
+            i1: index in the primary Catalog
+            i2: index in the second set of points (sent as arguments
+                to match2file)
+            cos(dist): cosine of the angular distance
+                between the points
+    """
+    cat = Catalog(ra1, dec1, radius1, nside=nside)
+
+    cat.match(ra2, dec2, maxmatch=maxmatch)
+    return cat.get_matches()
 
 class Catalog(_smatch.Catalog):
     """
-    Catalog for matching
+    Catalog for spacial matching on the sphere
 
     parameters
     ----------
@@ -19,7 +65,7 @@ class Catalog(_smatch.Catalog):
     nside: int, optional
         nside for the healpix layout. Default 512
     """
-    def __init__(self, ra, dec, radius, nside=512):
+    def __init__(self, ra, dec, radius, nside=NSIDE_DEFAULT):
 
         ra,dec,radius=_get_arrays(ra,dec,radius=radius)
         self._matches = None
@@ -39,18 +85,23 @@ class Catalog(_smatch.Catalog):
         -------
         structure with the following structure
             i1: index in the primary Catalog
-            i2: index in the second set of points
+            i2: index in the second set of points (sent to match or
+                match2file)
             cos(dist): cosine of the angular distance
                 between the points
         """
         if self._matches is None:
-            raise RuntimeError("run match() first")
+            raise RuntimeError("no match structure found; either run "
+                               "match() first or load results from a "
+                               "file if you ran match2file()")
 
         return self._matches
 
     def get_nmatches(self):
         """
-        get the number of matches
+        get the number of matches found
+
+        This will be accurate even if matches were written to a file
         """
         return super(Catalog,self).get_nmatches()
 
@@ -94,13 +145,42 @@ class Catalog(_smatch.Catalog):
             dec,
         )
 
-        nmatch=self.get_nmatches()
-        matches = numpy.zeros(nmatch, dtype=_match_dtype)
+        nmatches=self.get_nmatches()
+        matches = numpy.zeros(nmatches, dtype=_match_dtype)
 
-        if nmatch > 0:
+        if nmatches > 0:
             super(Catalog,self)._copy_matches(matches)
 
         self._matches=matches
+
+    def match2file(self, filename, ra, dec, maxmatch=1):
+        """
+        match the catalog to the second set of points, writing
+        results to a file
+
+        parameters
+        ----------
+        filename: string
+            File in which to write the matches
+        ra: array
+            ra to match, in degrees
+        dec: array
+            dec to match, in degrees
+        maxmatch: int, optional
+            maximum number of matches to allow per point. The closest maxmatch
+            matches will be kept.  Default is 1, which implles keepin the
+            closest match.  Set to <= 0 to keep all matches.
+        """
+        ra,dec=_get_arrays(ra,dec)
+        super(Catalog, self).match2file(
+            maxmatch,
+            ra,
+            dec,
+            filename,
+        )
+
+        # make sure to store None here, since the matches are in a file
+        self._matches=None
 
     def __repr__(self):
         area=self.get_hpix_area()*(180.0/numpy.pi)**2
@@ -111,6 +191,29 @@ class Catalog(_smatch.Catalog):
             '    npoints:             %d' % self.ra.size,
         ]
         return '\n'.join(lines)
+
+def read_matches(filename):
+    """
+    read matches from the indicated file
+
+    returns
+    -------
+    matches: structured array
+        array with fields
+            i1: index in the primary Catalog
+            i2: index in the second set of points (sent as arguments
+                to match2file)
+            cos(dist): cosine of the angular distance
+                between the points
+
+    """
+    nmatches = _smatch._count_lines(filename)
+    matches = numpy.zeros(nmatches, dtype=_match_dtype)
+
+    _smatch._load_matches(filename, matches)
+    return matches
+
+
 
 def _get_arrays(ra, dec, radius=None):
     ra=numpy.array(ra, ndmin=1, dtype='f8', copy=False)
@@ -138,6 +241,7 @@ def _get_arrays(ra, dec, radius=None):
     else:
         return ra,dec
 
+# data type of the match structure
 _match_dtype=[
     ('i1','i8'),
     ('i2','i8'),
