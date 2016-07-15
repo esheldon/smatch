@@ -9,7 +9,7 @@
 
 struct PySMatchCat {
     PyObject_HEAD
-    int64 maxmatch;
+    int64_t maxmatch;
 
     point_vector *pts;
     struct healpix* hpix;
@@ -17,7 +17,7 @@ struct PySMatchCat {
 
     // we keep this separately, for the case of writing
     // matches to a file
-    int64 nmatches;
+    int64_t nmatches;
 
     match_vector *matches;
 
@@ -116,27 +116,25 @@ static struct tree_node* create_tree(struct healpix* hpix, point_vector* pts) {
     struct tree_node* tree=NULL;
     lvector* listpix=NULL;
     Point* pt=NULL;
-    int64* data=NULL;
-    int64 half_npix=0;
+    int64_t hpix_id=0;
+    int64_t half_npix=0;
+    size_t index=0, ihpix=0;
     
     listpix = lvector_new();
 
     // this will produce a more balanced tree across the whole sky
     half_npix = hpix->npix/2;
 
-    size_t count=0;
     pt=pts->data;
-    while (pt < pts->data + pts->size) {
+    for (index=0; index < pts->size; index++) {
+
+        pt = &pts->data[index];
         hpix_disc_intersect(hpix, pt->x, pt->y, pt->z, pt->radius, listpix);
 
-        data=listpix->data;
-        while (data < listpix->data + listpix->size) {
-            tree_insert(&tree, (*data)-half_npix, count);
-            data++;
+        for (ihpix=0; ihpix < listpix->size; ihpix++) {
+            hpix_id = listpix->data[ihpix];
+            tree_insert(&tree, hpix_id-half_npix, index);
         }
-
-        pt++;
-        count++;
     }
     vector_free(listpix);
 
@@ -163,7 +161,7 @@ PySMatchCat_init(struct PySMatchCat* self, PyObject *args, PyObject *kwds)
 
     self->matches = match_vector_new();
 
-    self->hpix = hpix_new((int64)nside);
+    self->hpix = hpix_new((int64_t)nside);
     if (self->hpix==NULL) {
         err=1;
         goto _catalog_init_cleanup;
@@ -257,9 +255,9 @@ static void domatch1(const struct PySMatchCat* self,
                      size_t input_ind,
                      match_vector* matches) {
 
-    int64 hpixid=0;
+    int64_t hpixid=0;
     struct tree_node* node=NULL;
-    int64 half_npix=0;
+    int64_t half_npix=0;
 
     size_t i=0;
     int64_t cat_ind=0;
