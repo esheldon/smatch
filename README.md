@@ -92,9 +92,12 @@ with Recfile(filename, "r", dtype=dtype, delim=' ') as robj:
 Timings
 --------
 
-For catalogs with object density of the Dark Energy Survey,
-higher `nside` results in faster search times, with some
-tradeoff in memory usage.  4096 or 2048 are probably sufficient
-for this use case.
+For catalogs with object density of the Dark Energy Survey, searching within 10
+arcseconds, higher `nside` results in faster search times, with some tradeoff
+in memory usage.  4096 or 2048 are probably sufficient for this use case.
 
 ![Timings vs nside](data/smatch-times.png?raw=true "Timings vs Nside for DES catalogs")
+
+For larger search radii, smaller nside for larger area pixels works
+better; for example with the same catalog and a 200 arcsec search radius,
+nside=2048 is faster.
