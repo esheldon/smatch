@@ -101,3 +101,5 @@ in memory usage.  4096 or 2048 are probably sufficient for this use case.
 For larger search radii, smaller nside for larger area pixels works
 better; for example with the same catalog and a 200 arcsec search radius,
 nside=2048 is faster.
+
+![Timings vs nside](data/smatch-times-200.png?raw=true "Timings vs Nside for DES catalogs")
