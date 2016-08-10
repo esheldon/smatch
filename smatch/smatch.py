@@ -16,17 +16,17 @@ def match(ra1, dec1, radius1, ra2, dec2,
     ----------
 
     ra1: array
-        right ascension array 1
+        right ascension array 1 in degrees
     dec1: array
-        declination array 1 same size as ra1
+        declination array 1 in degrees, same size as ra1
     radius: array or scalar
-        radius around each point to search; can be a scalar
+        search radius around each point in degrees; can be a scalar
         or same size as ra1/dec1.
 
     ra2: array
-        right ascension array 2
+        right ascension array 2 in degrees
     dec2: array
-        declination array 2 same size as ra2
+        declination array 2 same size as ra2 in degrees
 
     nside: int, optional
         nside for the healpix layout. Default 512
