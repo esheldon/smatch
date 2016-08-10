@@ -91,6 +91,23 @@ with Recfile(filename, "r", dtype=dtype, delim=' ') as robj:
     data=robj[start:end]
 ```
 
+Unit Tests
+----------
+All unit tests should pass
+```python
+import smatch
+smatch.test()
+
+testCreate (smatch.test.TestSMatch) ... ok
+testMatch (smatch.test.TestSMatch) ... ok
+testMatch2File (smatch.test.TestSMatch) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.003s
+
+OK
+```
+
 Timings
 --------
 
