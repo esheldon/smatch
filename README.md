@@ -13,6 +13,8 @@ import smatch
 
 nside=4096 # healpix nside
 maxmatch=1 # return closest match
+
+# ra,dec,radius in degrees
 matches = smatch.match(ra1, dec2, radius, ra2, dec2,
                        nside=nside, maxmatch=maxmatch)
 
