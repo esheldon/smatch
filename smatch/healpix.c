@@ -1,7 +1,10 @@
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <stdint.h>
+#include <Python.h>
+
 #include "healpix.h"
 #include "defs.h"
 #include "vector.h"
@@ -19,23 +22,27 @@ double hpix_area(int64 nside) {
 
 
 struct healpix* hpix_new(int64 nside) {
-    struct healpix* hpix;
+    struct healpix* hpix=NULL;
 
     if (nside < 1 || nside > NS_MAX) {
-        printf("nside out of range [%d, %d]\n", 1, NS_MAX);
-        exit(EXIT_FAILURE);
+        char err[128];
+        sprintf(err,"nside out of range [%d, %d]\n", 1, NS_MAX);
+        PyErr_SetString(PyExc_ValueError, err);
+        goto _hpix_new_bail;
     }
 
     hpix = malloc(sizeof(struct healpix));
     if (hpix == NULL) {
-        printf("Could not allocate struct healpix\n");
-        exit(EXIT_FAILURE);
+        PyErr_SetString(PyExc_MemoryError, "Could not allocate struct healpix");
+        goto _hpix_new_bail;
     }
 
     hpix->nside = nside;
     hpix->npix = hpix_npix(nside);
     hpix->area = hpix_area(nside);
     hpix->ncap = 2*nside*(nside-1); // number of pixels in the north polar cap
+
+_hpix_new_bail:
 
     return hpix;
 }
@@ -244,12 +251,17 @@ int64 hpix_ring_num(const struct healpix* hpix, double z) {
     return iring;
 }
 
-int64 hpix_eq2pix(const struct healpix* hpix, double ra, double dec) {
+int64 hpix_eq2pix(const struct healpix* hpix,
+                  double ra, double dec,
+                  int *status) {
     int64 nside=hpix->nside;
     int64 ipix=0;
     double theta=0, phi=0;
 
-    hpix_radec_degrees_to_thetaphi_radians(ra, dec, &theta, &phi);
+    *status = hpix_radec_degrees_to_thetaphi_radians(ra, dec, &theta, &phi);
+    if (! (*status) ) {
+        goto _hpix_eq2pix_bail;
+    }
 
     double z = cos(theta);
     double za = fabs(z);
@@ -295,34 +307,57 @@ int64 hpix_eq2pix(const struct healpix* hpix, double ra, double dec) {
 
     }
 
+_hpix_eq2pix_bail:
+
     return ipix;
 }
 
 
-void hpix_eq2xyz(double ra, double dec, double* x, double* y, double* z) {
+int hpix_eq2xyz(double ra, double dec, double* x, double* y, double* z) {
+
+    int status=0;
 
     double theta=0, phi=0;
 
-    hpix_radec_degrees_to_thetaphi_radians(ra, dec, &theta, &phi);
+    status=hpix_radec_degrees_to_thetaphi_radians(ra, dec, &theta, &phi);
+    if (!status) {
+        goto _hpix_eq2xyz_bail;
+    }
 
     double sintheta = sin(theta);
     *x = sintheta * cos(phi);
     *y = sintheta * sin(phi);
     *z = cos(theta);
 
+_hpix_eq2xyz_bail:
+
+    return status;
+
 }
 
-void hpix_radec_degrees_to_thetaphi_radians(double ra, double dec, double* theta, double* phi) {
+int hpix_radec_degrees_to_thetaphi_radians(double ra, double dec, double* theta, double* phi) {
+
+    int status=0;
 
     if (ra < 0.0 || ra > 360.) {
-        printf("ra out of range [0,360.]\n");
-        exit(EXIT_FAILURE);
+        char err[128];
+        sprintf(err,"ra = %g out of range [0,360]", ra);
+        PyErr_SetString(PyExc_ValueError, err);
+        goto _hpix_conv_bail;
     }
     if (dec < -90. || dec > 90.) {
-        printf("dec out of range [-90.,90.]\n");
-        exit(EXIT_FAILURE);
+        char err[128];
+        sprintf(err,"dec = %g out of range [-90,90]", dec);
+        PyErr_SetString(PyExc_ValueError, err);
+        goto _hpix_conv_bail;
     }
 
     *phi = ra*D2R;
     *theta = -dec*D2R + M_PI_2;
+
+    status=1;
+
+_hpix_conv_bail:
+
+    return status;
 }

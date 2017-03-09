@@ -66,6 +66,8 @@ static void push_matches(match_vector* self, const match_vector* matches)
  */
 
 static point_vector* points_init(PyObject* raObj, PyObject* decObj, PyObject* radObj) {
+    int status=0;
+
     point_vector *pts=NULL;
     Point* pt = NULL;
     double *raptr=NULL, *decptr=NULL, *radptr=NULL;
@@ -74,15 +76,14 @@ static point_vector* points_init(PyObject* raObj, PyObject* decObj, PyObject* ra
     n = PyArray_SIZE(raObj);
     if (n <= 0) {
         PyErr_SetString(PyExc_ValueError, "Entered ra/dec must have size > 0\n");
-        return NULL;
+        goto _points_init_bail;
     }
     nrad = PyArray_SIZE(radObj);
     if (nrad != n && nrad != 1) {
         PyErr_Format(PyExc_ValueError, 
                      "radii must be size 1 or same length as ra,dec (%ld).  Got %ld\n",n,nrad);
-        return NULL;
+        goto _points_init_bail;
     }
-
 
     pts = point_vector_new();
 
@@ -99,7 +100,12 @@ static point_vector* points_init(PyObject* raObj, PyObject* decObj, PyObject* ra
         raptr=PyArray_GETPTR1(raObj, i);
         decptr=PyArray_GETPTR1(decObj, i);
 
-        hpix_eq2xyz(*raptr, *decptr, &pt->x, &pt->y, &pt->z);
+        status=hpix_eq2xyz(*raptr, *decptr, &pt->x, &pt->y, &pt->z);
+        if (!status) {
+            // we expect the error to be set already
+            //PyErr_Format(PyExc_ValueError, "Error converting ra,dec to xyz");
+            goto _points_init_bail;
+        }
 
         if (nrad > 1) {
             radptr = PyArray_GETPTR1(radObj, i);
@@ -109,6 +115,12 @@ static point_vector* points_init(PyObject* raObj, PyObject* decObj, PyObject* ra
 
     }
 
+_points_init_bail:
+
+    if (!status && pts) {
+        // pts set to NULL
+        vector_free(pts);
+    }
     return pts;
 }
 
@@ -250,11 +262,13 @@ static PyObject* PySMatchCat_set_nmatches(struct PySMatchCat* self, PyObject *ar
 }
 
 
-static void domatch1(const struct PySMatchCat* self, 
-                     double ra,
-                     double dec,
-                     size_t input_ind,
-                     match_vector* matches) {
+static int domatch1(const struct PySMatchCat* self, 
+                    double ra,
+                    double dec,
+                    size_t input_ind,
+                    match_vector* matches) {
+
+    int status=0;
 
     int64_t hpixid=0;
     struct tree_node* node=NULL;
@@ -270,12 +284,21 @@ static void domatch1(const struct PySMatchCat* self,
     vector_resize(matches,0);
 
     half_npix = self->hpix->npix/2;
-    hpixid = hpix_eq2pix(self->hpix, ra, dec) - half_npix;
+    hpixid = hpix_eq2pix(self->hpix, ra, dec, &status);
+    if (!status) {
+        goto _domatch1_bail;
+    }
+
+    hpixid -= half_npix;
+
     node = tree_find(self->tree, hpixid);
 
     if (node != NULL) {
         Point* pt=NULL;
-        hpix_eq2xyz(ra,dec,&x,&y,&z);
+        status=hpix_eq2xyz(ra,dec,&x,&y,&z);
+        if (!status) {
+            goto _domatch1_bail;
+        }
 
         for (i=0; i<node->indices->size; i++) {
             // index into other list
@@ -302,9 +325,13 @@ static void domatch1(const struct PySMatchCat* self,
         vector_resize(matches, self->maxmatch);
     }
 
+_domatch1_bail:
+    return status;
 }
 
 static int domatch(struct PySMatchCat* self, PyObject* raObj, PyObject* decObj) {
+    int status=0;
+
     size_t i=0, n=0;
     double *raptr=NULL, *decptr=NULL;
     match_vector* new_matches = match_vector_new();
@@ -319,7 +346,10 @@ static int domatch(struct PySMatchCat* self, PyObject* raObj, PyObject* decObj) 
         raptr=PyArray_GETPTR1(raObj, i);
         decptr=PyArray_GETPTR1(decObj, i);
 
-        domatch1(self, *raptr, *decptr, i, new_matches);
+        status=domatch1(self, *raptr, *decptr, i, new_matches);
+        if (!status) {
+            goto _domatch_bail;
+        }
 
         if (new_matches->size == 0) {
             continue;
@@ -331,7 +361,8 @@ static int domatch(struct PySMatchCat* self, PyObject* raObj, PyObject* decObj) 
     }
     vector_free(new_matches);
 
-    return 1;
+_domatch_bail:
+    return status;
 }
 
 /*
@@ -341,6 +372,7 @@ static int domatch(struct PySMatchCat* self, PyObject* raObj, PyObject* decObj) 
 */
 static PyObject* PySMatchCat_match(struct PySMatchCat* self, PyObject *args)
 {
+    int status=0;
     PyObject* raObj=NULL;
     PyObject* decObj=NULL;
     PY_LONG_LONG maxmatch=0;
@@ -351,14 +383,19 @@ static PyObject* PySMatchCat_match(struct PySMatchCat* self, PyObject *args)
 
     self->maxmatch=maxmatch;
 
-    domatch(self, raObj, decObj);
-    Py_RETURN_NONE;
+    status=domatch(self, raObj, decObj);
+    if (!status) {
+        return NULL;
+    } else {
+        Py_RETURN_NONE;
+    }
 }
 
 static int domatch2file(struct PySMatchCat* self,
                         PyObject* raObj,
                         PyObject* decObj,
                         const char* filename) {
+    int status=0;
     size_t i=0, j=0, n=0;
     double *raptr=NULL, *decptr=NULL;
     FILE* fobj=NULL;
@@ -372,7 +409,8 @@ static int domatch2file(struct PySMatchCat* self,
 
     fobj=fopen(filename, "w");
     if (fobj == NULL) {
-        return 0;
+        PyErr_Format(PyExc_IOError, "Could not open file for writing: '%s'", filename);
+        goto _domatch2file_bail;
     }
 
     n = PyArray_SIZE(raObj);
@@ -381,7 +419,10 @@ static int domatch2file(struct PySMatchCat* self,
         raptr=PyArray_GETPTR1(raObj, i);
         decptr=PyArray_GETPTR1(decObj, i);
 
-        domatch1(self, *raptr, *decptr, i, matches);
+        status=domatch1(self, *raptr, *decptr, i, matches);
+        if (!status) {
+            goto _domatch2file_bail;
+        }
 
         for (j=0; j<matches->size; j++) {
             m=&matches->data[j];
@@ -392,11 +433,15 @@ static int domatch2file(struct PySMatchCat* self,
     }
     vector_free(matches);
 
-    fclose(fobj);
 
-    return 1;
+_domatch2file_bail:
+
+    if (fobj) {
+        fclose(fobj);
+    }
+
+    return status;
 }
-
 
 
 /*
@@ -406,6 +451,7 @@ static int domatch2file(struct PySMatchCat* self,
 */
 static PyObject* PySMatchCat_match2file(struct PySMatchCat* self, PyObject *args)
 {
+    int status=0;
     PyObject* raObj=NULL;
     PyObject* decObj=NULL;
     PY_LONG_LONG maxmatch=0;
@@ -417,8 +463,14 @@ static PyObject* PySMatchCat_match2file(struct PySMatchCat* self, PyObject *args
 
     self->maxmatch=maxmatch;
 
-    domatch2file(self, raObj, decObj, filename);
-    Py_RETURN_NONE;
+    status=domatch2file(self, raObj, decObj, filename);
+
+    if (!status) {
+        return NULL;
+    } else {
+        Py_RETURN_NONE;
+    }
+
 }
 
 int64_t count_lines(FILE* fobj)
