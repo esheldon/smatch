@@ -41,6 +41,11 @@ all_matches = smatch.match(ra1, dec2, radius, ra2, dec2,
 some_matches = smatch.match(ra1, dec2, radius, ra2, dec2,
                             nside=nside, maxmatch=3)
 
+# you can also match a catalog to itself, ignoring exact
+# matches
+
+some_matches = smatch.match_self(ra, dec, radius)
+
 
 # A more flexibile interface is a Catalog.  For example it can
 # be used to match the same data set to multiple other data sets
@@ -58,6 +63,9 @@ cat.match(ra3, dec3, maxmatch=maxmatch)
 print("found:",cat.nmatches,"matches")
 matches = cat.matches
 
+# matching the catalog to itself, ignoring exact matches
+cat.match_self(maxmatch=maxmatch)
+
 #
 # Writing matches to  file
 # 
@@ -67,9 +75,11 @@ matches = cat.matches
 # using the convenience function
 fname="matches.dat"
 smatch.match(ra1, dec2, radius, ra2, dec2, file=fname)
+smatch.match_self(ra, dec, radius, file=fname)
 
 # using a catalog
-cat.match2file(fname, ra3, dec3)
+cat.match(fname, ra3, dec3, file=fname)
+cat.match_self(file=fname)
 
 
 # you can read them later
