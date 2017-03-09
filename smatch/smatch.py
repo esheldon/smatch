@@ -52,6 +52,13 @@ def match(ra1, dec1, radius1, ra2, dec2,
 
     If a file is sent, None is returned
     """
+
+    # add early check  so we don't fail after building the
+    # entire catalog, which could take a while
+
+    ra2,dec2 = _get_arrays(ra2,dec2)
+
+
     cat = Catalog(ra1, dec1, radius1, nside=nside)
 
     if file is not None:
