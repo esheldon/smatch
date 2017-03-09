@@ -68,6 +68,59 @@ def match(ra1, dec1, radius1, ra2, dec2,
         cat.match(ra2, dec2, maxmatch=maxmatch)
         return cat.get_matches()
 
+def match_self(ra, dec, radius,
+               nside=NSIDE_DEFAULT, maxmatch=1,
+               file=None):
+    """
+    match points on the sphere.  Match the catalog to itself, 
+    ignoring exact matches
+
+    parameters
+    ----------
+
+    ra: array
+        right ascension array in degrees
+    dec: array
+        declination array in degrees, same size as ra
+    radius: array or scalar
+        search radius around each point in degrees; can be a scalar
+        or same size as ra1/dec1.
+
+    nside: int, optional
+        nside for the healpix layout. Default 512
+
+    maxmatch: int, optional
+        maximum number of matches to allow per point. The closest maxmatch
+        matches will be kept.  Default is 1, which implles keepin the
+        closest match.  Set to <= 0 to keep all matches.
+
+    file: string
+        File in which to write matches.
+
+    returns
+    -------
+    matchcat: structured array
+        Structured array with fields
+
+            i1: index in the primary Catalog
+            i2: index in the second set of points (sent as arguments
+                to match2file)
+            cos(dist): cosine of the angular distance
+                between the points
+
+    If a file is sent, None is returned
+    """
+
+    cat = Catalog(ra, dec, radius, nside=nside)
+
+    if file is not None:
+        cat.match_self2file(file, maxmatch=maxmatch)
+        return None
+    else:
+        cat.match_self(maxmatch=maxmatch)
+        return cat.get_matches()
+
+
 class Catalog(_smatch.Catalog):
     """
     Catalog for spacial matching on the sphere
@@ -156,20 +209,37 @@ class Catalog(_smatch.Catalog):
             matches will be kept.  Default is 1, which implles keepin the
             closest match.  Set to <= 0 to keep all matches.
         """
+
         ra,dec=_get_arrays(ra,dec)
-        super(Catalog, self).match(
+
+        matching_self=0
+        self._match(
             maxmatch,
+            matching_self,
             ra,
             dec,
         )
 
-        nmatches=self.get_nmatches()
-        matches = numpy.zeros(nmatches, dtype=match_dtype)
+    def match_self(self, maxmatch=1):
+        """
+        match the catalog against itself, ignoring exact
+        matches
 
-        if nmatches > 0:
-            super(Catalog,self)._copy_matches(matches)
+        parameters
+        ----------
+        maxmatch: int, optional
+            maximum number of matches to allow per point. The closest maxmatch
+            matches will be kept.  Default is 1, which implles keepin the
+            closest match.  Set to <= 0 to keep all matches.
+        """
 
-        self._matches=matches
+        matching_self=1
+        self._match(
+            maxmatch,
+            matching_self,
+            self.ra,
+            self.dec,
+        )
 
     def match2file(self, filename, ra, dec, maxmatch=1):
         """
@@ -190,8 +260,62 @@ class Catalog(_smatch.Catalog):
             closest match.  Set to <= 0 to keep all matches.
         """
         ra,dec=_get_arrays(ra,dec)
+
+        matching_self=0
+        self._match2file(
+            maxmatch,
+            matching_self,
+            ra,
+            dec,
+            filename,
+        )
+
+    def match_self2file(self, filename, maxmatch=1):
+        """
+        match the catalog to itself, ignoring exact matches.
+        Write results to a file
+
+
+        parameters
+        ----------
+        filename: string
+            File in which to write the matches
+        maxmatch: int, optional
+            maximum number of matches to allow per point. The closest maxmatch
+            matches will be kept.  Default is 1, which implles keepin the
+            closest match.  Set to <= 0 to keep all matches.
+        """
+
+        matching_self=1
+        self._match2file(
+            maxmatch,
+            matching_self,
+            self.ra,
+            self.dec,
+            filename,
+        )
+
+    def _match(self, maxmatch, matching_self, ra, dec):
+
+        super(Catalog, self).match(
+            maxmatch,
+            matching_self,
+            ra,
+            dec,
+        )
+
+        nmatches = self.get_nmatches()
+        matches  = numpy.zeros(nmatches, dtype=match_dtype)
+
+        if nmatches > 0:
+            super(Catalog,self)._copy_matches(matches)
+
+        self._matches=matches
+
+    def _match2file(self, maxmatch, matching_self, ra, dec, filename):
         super(Catalog, self).match2file(
             maxmatch,
+            matching_self,
             ra,
             dec,
             filename,
@@ -199,6 +323,8 @@ class Catalog(_smatch.Catalog):
 
         # make sure to store None here, since the matches are in a file
         self._matches=None
+
+
 
     def __repr__(self):
         area=self.get_hpix_area()*(180.0/numpy.pi)**2

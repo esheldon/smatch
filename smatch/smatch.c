@@ -10,6 +10,7 @@
 struct PySMatchCat {
     PyObject_HEAD
     int64_t maxmatch;
+    int matching_self;
 
     point_vector *pts;
     struct healpix* hpix;
@@ -250,6 +251,17 @@ static PyObject* PySMatchCat_set_nmatches(struct PySMatchCat* self, PyObject *ar
 }
 
 
+/*
+
+   parameters
+
+   self: the catalog
+   ra, dec: the point to match from the second catalog
+   input_ind: the index in the second catalog
+   matches: the match vector to fill
+
+*/
+
 static void domatch1(const struct PySMatchCat* self, 
                      double ra,
                      double dec,
@@ -281,6 +293,10 @@ static void domatch1(const struct PySMatchCat* self,
             // index into other list
             cat_ind = node->indices->data[i];
 
+            if (self->matching_self && cat_ind == input_ind) {
+                continue;
+            }
+
             pt = &self->pts->data[cat_ind];
 
             cos_angle = pt->x*x + pt->y*y + pt->z*z;
@@ -304,7 +320,9 @@ static void domatch1(const struct PySMatchCat* self,
 
 }
 
-static int domatch(struct PySMatchCat* self, PyObject* raObj, PyObject* decObj) {
+static int domatch(struct PySMatchCat* self,
+                   PyObject* raObj,
+                   PyObject* decObj) {
     size_t i=0, n=0;
     double *raptr=NULL, *decptr=NULL;
     match_vector* new_matches = match_vector_new();
@@ -343,13 +361,15 @@ static PyObject* PySMatchCat_match(struct PySMatchCat* self, PyObject *args)
 {
     PyObject* raObj=NULL;
     PyObject* decObj=NULL;
-    PY_LONG_LONG maxmatch=0;
 
-    if (!PyArg_ParseTuple(args, (char*)"LOO", &maxmatch,&raObj, &decObj)) {
+    if (!PyArg_ParseTuple(args, (char*)"LiOO",
+                          &self->maxmatch,
+                          &self->matching_self,
+                          &raObj,
+                          &decObj)) {
         return NULL;
     }
 
-    self->maxmatch=maxmatch;
 
     domatch(self, raObj, decObj);
     Py_RETURN_NONE;
@@ -408,14 +428,16 @@ static PyObject* PySMatchCat_match2file(struct PySMatchCat* self, PyObject *args
 {
     PyObject* raObj=NULL;
     PyObject* decObj=NULL;
-    PY_LONG_LONG maxmatch=0;
     const char *filename=NULL;
 
-    if (!PyArg_ParseTuple(args, (char*)"LOOs", &maxmatch, &raObj, &decObj, &filename)) {
+    if (!PyArg_ParseTuple(args, (char*)"LiOOs",
+                          &self->maxmatch,
+                          &self->matching_self,
+                          &raObj,
+                          &decObj,
+                          &filename)) {
         return NULL;
     }
-
-    self->maxmatch=maxmatch;
 
     domatch2file(self, raObj, decObj, filename);
     Py_RETURN_NONE;

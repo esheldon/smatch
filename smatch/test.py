@@ -20,10 +20,10 @@ class TestSMatch(unittest.TestCase):
         two = 2.0/3600.
         # offset second list by fraction of 2 arcsec in dec
         # not last ones don'e match at all
-        self.ra1 = numpy.array(  [200.0, 200.0, 200.0, 175.23, 21.36])
-        self.dec1 = numpy.array( [24.3,          24.3,            24.3,  -28.25, -15.32])
+        self.ra1  = numpy.array( [200.0, 200.0, 200.0,  175.23,  21.36])
+        self.dec1 = numpy.array( [24.3,   24.3,  24.3,  -28.25, -15.32])
         # make one of them big endian to check byte swapping
-        self.ra2 = numpy.array(  [200.0, 200.0, 200.0, 175.23, 55.25], dtype='>f8')
+        self.ra2 = numpy.array(  [        200.0,           200.0,           200.0,            175.23, 55.25], dtype='>f8')
         self.dec2 = numpy.array( [24.3+0.75*two, 24.3 + 0.25*two, 24.3 - 0.33*two, -28.25 + 0.58*two, 75.22])
 
         self.two=two
@@ -31,6 +31,8 @@ class TestSMatch(unittest.TestCase):
     
         self.maxmatches = [0,1,2]
         self.expected = [10,4,7]
+
+        self.expected_self = [4, 3, 4]
 
     def testCreate(self):
         cat, ok = self.make_cat(self.two)
@@ -62,6 +64,37 @@ class TestSMatch(unittest.TestCase):
 
             for maxmatch, expected in zip(self.maxmatches,self.expected):
                 cat.match(self.ra2, self.dec2, maxmatch=maxmatch)
+
+                self.check_matches(cat.get_nmatches(),
+                                   expected,
+                                   maxmatch,
+                                   rstr+' get_nmatches')
+                self.check_matches(cat.get_matches().size,
+                                   expected,
+                                   maxmatch,
+                                   rstr+' matches.size')
+
+    def testMatchSelf(self):
+
+        # scalar radius
+        radius=self.two
+        radii = numpy.zeros(self.ra2.size) + self.two
+
+        for rad in [radius, radii]:
+
+            if numpy.isscalar(rad):
+                rstr=' scalar radius'
+            else:
+                rstr=' array radius'
+
+            cat, ok = self.make_cat(rad, set=2)
+            self.assertTrue(ok,"creating Catalog object")
+
+            if not ok:
+                skipTest("cannot test result if Catalog object creation fails")
+
+            for maxmatch, expected in zip(self.maxmatches,self.expected_self):
+                cat.match_self(maxmatch=maxmatch)
 
                 self.check_matches(cat.get_nmatches(),
                                    expected,
@@ -121,9 +154,13 @@ class TestSMatch(unittest.TestCase):
             extra,
         )
 
-    def make_cat(self, rad):
+    def make_cat(self, rad, set=1):
         try:
-            cat = Catalog(self.ra1, self.dec1, rad, nside=self.nside)
+            if set==1:
+                ra,dec = self.ra1, self.dec1
+            else:
+                ra,dec = self.ra2, self.dec2
+            cat = Catalog(ra, dec, rad, nside=self.nside)
             ok=True
         except:
             cat = None
