@@ -29,8 +29,13 @@ struct healpix* hpix_delete(struct healpix* hpix);
    renders the pixel number ipix (RING scheme) for a pixel which contains
    a point on a sphere at coordinates theta and phi, given the map
    resolution parameter nside
+
+   *status gets set to 1 for success
+
  */
-int64 hpix_eq2pix(const struct healpix* hpix, double ra, double dec);
+int64 hpix_eq2pix(const struct healpix* hpix,
+                  double ra, double dec,
+                  int *status);
 
 /* fill listpix with list of all pixels with centers in the disc 
 
@@ -82,12 +87,19 @@ int64 hpix_ring_num(const struct healpix* hpix, double z);
 /*
    renders the x,y,z corresponding to input ra,dec
    North pole is (x,y,z)=(0,0,1)
+
+   returns 1 for success
 */
 
-void hpix_eq2xyz(double ra, double dec, double* x, double* y, double* z);
+int hpix_eq2xyz(double ra, double dec,
+                double* x, double* y, double* z);
 
 
 
-void hpix_radec_degrees_to_thetaphi_radians(double ra, double dec, double* theta, double* phi);
+/*
+   returns 1 for success
+*/
+int hpix_radec_degrees_to_thetaphi_radians(double ra, double dec,
+                                           double* theta, double* phi);
 
 #endif
