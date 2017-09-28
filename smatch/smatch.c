@@ -211,6 +211,7 @@ PySMatchCat_dealloc(struct PySMatchCat* self)
     vector_free(self->pts);
     self->hpix = hpix_delete(self->hpix);
     self->tree = tree_delete(self->tree);
+    vector_free(self->matches);
 
 #if PY_MAJOR_VERSION >= 3
     Py_TYPE(self)->tp_free((PyObject*)self);
