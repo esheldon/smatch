@@ -7,7 +7,7 @@ import numpy
 
 
 from . import smatch
-from .smatch import Catalog, read_matches
+from .smatch import Catalog, read_matches, match
 
 def test():
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSMatch)
@@ -42,6 +42,12 @@ class TestSMatch(unittest.TestCase):
         self.assertEqual(nside, self.nside, "checking depth can be gotten")
 
         area=cat.get_hpix_area()
+
+    def testMatchArraysWithScalarRadius(self):
+        match(numpy.array([200, 200]), numpy.array([15, 15]), self.two, self.ra1, self.dec1)
+
+    def testMatchScalarsWithScalarRadius(self):
+        match(200, 15, self.two, self.ra1, self.dec1) # segfaults
 
     def testMatch(self):
 
