@@ -90,10 +90,6 @@ static point_vector* points_init(PyObject* raObj, PyObject* decObj, PyObject* ra
 
     vector_resize(pts, n); 
 
-    if (nrad == 1) {
-        radptr = PyArray_GETPTR1(radObj, 0);
-        pt->radius = (*radptr)*D2R;
-    }
     for (i=0; i<n; i++) {
 
         pt=&pts->data[i];
@@ -108,12 +104,9 @@ static point_vector* points_init(PyObject* raObj, PyObject* decObj, PyObject* ra
             goto _points_init_bail;
         }
 
-        if (nrad > 1) {
-            radptr = PyArray_GETPTR1(radObj, i);
-            pt->radius = (*radptr)*D2R;
-            pt->cos_radius = cos( pt->radius );
-        }
-
+        radptr = PyArray_GETPTR1(radObj, 0);
+        pt->radius = (*radptr)*D2R;
+        pt->cos_radius = cos( pt->radius );
     }
 
 _points_init_bail:
