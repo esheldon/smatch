@@ -7,7 +7,7 @@ import numpy
 
 
 from . import smatch
-from .smatch import Catalog, read_matches
+from .smatch import Catalog, read_matches, match
 
 def test():
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSMatch)
@@ -73,6 +73,9 @@ class TestSMatch(unittest.TestCase):
                                    expected,
                                    maxmatch,
                                    rstr+' matches.size')
+
+    def testMatchScalarsWithScalarRadius(self):
+        match(200, 15, self.two, self.ra1, self.dec1)
 
     def testMatchSelf(self):
 

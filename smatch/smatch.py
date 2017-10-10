@@ -348,11 +348,11 @@ def _get_arrays(ra, dec, radius=None):
 
         tmprad=numpy.array(radius, ndmin=1, dtype='f8', copy=False)
 
-        if tmprad.size == 1:
+        if tmprad.size == ra.size:
+            radarr=tmprad
+        elif tmprad.size == 1:
             radarr=numpy.zeros(ra.size)
             radarr[:] = tmprad[0]
-        elif tmprad.size == ra.size:
-            radarr=tmprad
         else:
             mess=("radius has size %d but expected either "
                   "a scalar of array of size %d")
