@@ -104,7 +104,7 @@ with Recfile(filename, "r", dtype=dtype, delim=' ') as robj:
 Unit Tests
 ----------
 All unit tests should pass
-```python
+```
 import smatch
 smatch.test()
 
