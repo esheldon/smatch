@@ -78,7 +78,7 @@ smatch.match(ra1, dec2, radius, ra2, dec2, file=fname)
 smatch.match_self(ra, dec, radius, file=fname)
 
 # using a catalog
-cat.match(fname, ra3, dec3, file=fname)
+cat.match(ra3, dec3, file=fname)
 cat.match_self(file=fname)
 
 
