@@ -259,6 +259,10 @@ static PyObject* PySMatchCat_set_nmatches(struct PySMatchCat* self, PyObject *ar
 
 /*
 
+   Match the input ra,dec to the catalog. All matches are stored
+   initially, and if the max number of matches is specified, then
+   the result is sorted and the closest are returned.
+
    parameters
 
    self: the catalog
