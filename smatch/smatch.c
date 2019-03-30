@@ -6,12 +6,14 @@
 #include "vector.h"
 #include "tree.h"
 #include "healpix.h"
+#include "cat.h"
 
 struct PySMatchCat {
     PyObject_HEAD
     int64_t maxmatch;
     int matching_self;
 
+    Catalog *cat;
     point_vector *pts;
     struct healpix* hpix;
     struct tree_node* tree;
@@ -165,6 +167,65 @@ _points_init_bail:
     return pts;
 }
 
+/*
+ * We assume these are in degrees, double precision, and are numpy arrays of
+ * same length
+ *
+ * radii get converted to radians
+ */
+
+static Catalog* catalog_init(PyObject* raObj, PyObject* decObj, PyObject* radObj) {
+    int status=0;
+
+    Catalog *cat=NULL;
+    Point* pt = NULL;
+    double *raptr=NULL, *decptr=NULL, *radptr=NULL;
+
+    npy_intp n=0, i=0, nrad=0;
+    n = PyArray_SIZE(raObj);
+    if (n <= 0) {
+        PyErr_SetString(PyExc_ValueError, "Entered ra/dec must have size > 0\n");
+        goto _catalog_init_bail;
+    }
+    nrad = PyArray_SIZE(radObj);
+    if (nrad != n) {
+        PyErr_Format(PyExc_ValueError, 
+                     "radii must be same length as ra,dec (%ld).  Got %ld\n",n,nrad);
+        goto _catalog_init_bail;
+    }
+
+    cat = cat_new(n);
+
+    for (i=0; i<n; i++) {
+
+        pt=&cat->data[i].point;
+
+        raptr=PyArray_GETPTR1(raObj, i);
+        decptr=PyArray_GETPTR1(decObj, i);
+
+        status=hpix_eq2xyz(*raptr, *decptr, &pt->x, &pt->y, &pt->z);
+        if (!status) {
+            // we expect the error to be set already
+            //PyErr_Format(PyExc_ValueError, "Error converting ra,dec to xyz");
+            goto _catalog_init_bail;
+        }
+
+        radptr = PyArray_GETPTR1(radObj, i);
+        pt->radius = (*radptr)*D2R;
+        pt->cos_radius = cos( pt->radius );
+
+    }
+
+_catalog_init_bail:
+
+    if (!status && cat) {
+        // cat set to NULL
+        cat_free(cat);
+    }
+    return cat;
+}
+
+
 // create a tree based on the healpix id
 static struct tree_node* create_tree(struct healpix* hpix, point_vector* pts) {
     struct tree_node* tree=NULL;
@@ -227,6 +288,12 @@ PySMatchCat_init(struct PySMatchCat* self, PyObject *args, PyObject *kwds)
         goto _catalog_init_cleanup;
     }
 
+    self->cat = catalog_init(raObj, decObj, radObj);
+    if (self->cat==NULL) {
+        err=1;
+        goto _catalog_init_cleanup;
+    }
+
     self->tree = create_tree(self->hpix, self->pts);
     if (self->tree==NULL) {
         err=1;
@@ -236,6 +303,7 @@ PySMatchCat_init(struct PySMatchCat* self, PyObject *args, PyObject *kwds)
 _catalog_init_cleanup:
     if (err != 0) {
         vector_free(self->pts);
+        cat_free(self->cat);
         self->hpix = hpix_delete(self->hpix);
         self->tree = tree_delete(self->tree);
         return -1;
@@ -249,6 +317,7 @@ PySMatchCat_dealloc(struct PySMatchCat* self)
 {
 
     vector_free(self->pts);
+    cat_free(self->cat);
     self->hpix = hpix_delete(self->hpix);
     self->tree = tree_delete(self->tree);
     vector_free(self->matches);

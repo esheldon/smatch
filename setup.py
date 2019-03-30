@@ -8,6 +8,7 @@ ext=Extension("smatch._smatch",
               ["smatch/smatch.c",
                "smatch/vector.c",
                "smatch/tree.c",
+               "smatch/cat.c",
                "smatch/healpix.c"])
 setup(name="smatch", 
       packages=['smatch'],
