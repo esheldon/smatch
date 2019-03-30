@@ -82,13 +82,12 @@ static void match_heap_fix(match_vector* self)
             break;
         }
 
-        data[jhi] = data[jlo]; // promotes the bigger of the branches
+        data[jhi] = data[jlo]; // promotes the smaller of the branches
         jhi = jlo;             // move down the heap
         jlo = 2*jlo + 1;       // calculates position of left branch
     }
 
     data[jhi] = *v; // places v, vind at correct position in heap
-
 
 }
 
