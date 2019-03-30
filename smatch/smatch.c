@@ -57,7 +57,54 @@ static void push_matches(match_vector* self, const match_vector* matches)
     
 }
 
+//
+//   ensure the first element in the heap is the smallest
+//   it is assumed the other data already form a heap
+//
 
+static void match_heap_fix(match_vector* self)
+{
+    size_t n = vector_size(self)-1;
+
+    const Match* v = &self->data[0];
+    Match* data = self->data;
+
+    size_t jhi = 0;
+    size_t jlo = 1;
+
+    while (jlo <= n) {
+        if (jlo < n && data[jlo].cosdist > data[jlo+1].cosdist) {
+            // The right node is smaller
+            jlo += 1;
+        }
+        if (v->cosdist <= data[jlo].cosdist) {
+            // It forms a heap already
+            break;
+        }
+
+        data[jhi] = data[jlo]; // promotes the bigger of the branches
+        jhi = jlo;             // move down the heap
+        jlo = 2*jlo + 1;       // calculates position of left branch
+    }
+
+    data[jhi] = *v; // places v, vind at correct position in heap
+
+
+}
+
+//
+//    possibly insert value, displacing larger values
+//    it is asssumed the data are already a heap other than
+//    the first item
+//
+
+static void match_heap_insert(match_vector* self, const Match* match)
+{
+    if (match->cosdist > self->data[0].cosdist) {
+        self->data[0] = *match;
+        match_heap_fix(self);
+    }
+}
 
 /*
  * We assume these are in degrees, double precision, and are numpy arrays of
