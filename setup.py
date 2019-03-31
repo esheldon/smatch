@@ -12,7 +12,7 @@ ext=Extension("smatch._smatch",
                "smatch/healpix.c"])
 setup(name="smatch", 
       packages=['smatch'],
-      version="0.1",
+      version="0.9.0",
       ext_modules=[ext],
       include_dirs=numpy.get_include())
 
