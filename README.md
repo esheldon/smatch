@@ -70,16 +70,17 @@ cat.match_self(maxmatch=maxmatch)
 # Writing matches to  file
 # 
 # This useful if the number of matches is large, and cannot be
-# held in memory
+# held in memory. But note if restricting the number of matches
+# with maxmatch >= 0 then no memory is saved.
 
 # using the convenience function
 fname="matches.dat"
-smatch.match(ra1, dec2, radius, ra2, dec2, file=fname)
-smatch.match_self(ra, dec, radius, file=fname)
+smatch.match(ra1, dec2, radius, ra2, dec2, maxmatch=-1, file=fname)
+smatch.match_self(ra, dec, radius, maxmatch=-1, file=fname)
 
 # using a catalog
-cat.match(ra3, dec3, file=fname)
-cat.match_self(file=fname)
+cat.match(ra3, dec3, maxmatch=-1, file=fname)
+cat.match_self(maxmatch=-1, file=fname)
 
 
 # you can read them later
