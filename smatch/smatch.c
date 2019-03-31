@@ -895,6 +895,8 @@ _load_matches_bail:
 
    No error checking is performed here, set up the data in python
 
+   match vectors are freed as we go
+
 */
 static PyObject* PySMatchCat_copy_matches(struct PySMatchCat* self, PyObject *args)
 {
@@ -915,37 +917,30 @@ static PyObject* PySMatchCat_copy_matches(struct PySMatchCat* self, PyObject *ar
         nmatch = vector_size(tmatches);
         if (nmatch > 0) {
 
-            // we can traverse heap in order rather than doing this, not sure
+            // we can traverse heap in order rather than doing this, but not sure
             // which is faster
-            // but this can be a hit in performance when the match vectors
-            // get large
+            // this can be a hit in performance when the match vectors
+            // get large, although not a huge one.  The main reason I'm avoiding
+            // it is because it is not possible to do this sorting for
+            // the case of writing to a file without restriction on the number
+            // of matches, so this would be inconsistent
             //match_vector_sort(tmatches);
+
             memmove(&matches[mindex],
                     tmatches->data,
                     nmatch*sizeof(Match) );
             mindex += nmatch;
         }
 
+        // clear the memory for match structures larger than 1, otherise
+        // just set the visible size to 0
+        if (vector_capacity(tmatches) > 1) {
+            vector_clear(tmatches);
+        } else {
+            vector_resize(tmatches, 0);
+        }
+
     }
-
-    Py_RETURN_NONE;
-}
-
-static PyObject* PySMatchCat_copy_matches_old(struct PySMatchCat* self, PyObject *args)
-{
-    PyObject* matchesObj=NULL;
-    Match* matches=NULL;
-
-    if (!PyArg_ParseTuple(args, (char*)"O", &matchesObj)) {
-        return NULL;
-    }
-
-    matches = PyArray_DATA(matchesObj);
-
-    memmove(matches,
-            self->matches->data,
-            self->matches->size*sizeof(Match)
-    );
 
     Py_RETURN_NONE;
 }
