@@ -36,7 +36,7 @@ struct PySMatchCat {
 
 };
 
-// sort functions for the matches
+// sort function for the matches
 static int match_compare(const void *a, const void *b) {
     // we want to sort largest first, so will
     // reverse the normal trend
@@ -52,10 +52,15 @@ static int match_compare(const void *a, const void *b) {
         return 0;
 }
 
+//
+// sort a match vector using quicksort
+//
+
 static void match_vector_sort(match_vector* self) {
     qsort(self->data, self->size, sizeof(Match), match_compare);
 }
 
+/*
 static void push_matches(match_vector* self, const match_vector* matches)
 {
     size_t i=0;
@@ -68,6 +73,7 @@ static void push_matches(match_vector* self, const match_vector* matches)
     }
     
 }
+*/
 
 //
 // build a heap in an existing match vector
@@ -99,7 +105,6 @@ static inline void match_build_heap(match_vector* self)
     }
 }
 
-//
 //
 //   make sure the heap is heapified after putting a new element
 //   at the root
@@ -152,12 +157,12 @@ static inline void match_heap_insert(match_vector* self, const Match* match)
     }
 }
 
-/*
- * We assume these are in degrees, double precision, and are numpy arrays of
- * same length
- *
- * radii get converted to radians
- */
+//
+// We assume these are in degrees, double precision, and are numpy arrays of
+// same length
+//
+// radii get converted to radians
+//
 
 static Catalog* catalog_init(PyObject* raObj, PyObject* decObj, PyObject* radObj) {
     int status=0;
@@ -215,6 +220,12 @@ _catalog_init_bail:
     return cat;
 }
 
+//
+// create the tree
+// for each point and radius, the associated disk is intersected
+// and the catalog entry is inserted into the tree for matches
+//
+
 static struct tree_node* create_tree(struct healpix* hpix, Catalog* cat) {
     struct tree_node* tree=NULL;
     lvector* listpix=NULL;
@@ -244,6 +255,9 @@ static struct tree_node* create_tree(struct healpix* hpix, Catalog* cat) {
     return tree;
 }
 
+//
+// initialize the python catalog object
+//
 
 static int
 PySMatchCat_init(struct PySMatchCat* self, PyObject *args, PyObject *kwds)
@@ -292,6 +306,10 @@ _catalog_init_cleanup:
 }
 
 
+//
+// deallocate the python object
+//
+
 static void
 PySMatchCat_dealloc(struct PySMatchCat* self)
 {
@@ -309,6 +327,9 @@ PySMatchCat_dealloc(struct PySMatchCat* self)
 
 }
 
+//
+// a repr for the python object
+//
 
 static PyObject *
 PySMatchCat_repr(struct PySMatchCat* self) {
@@ -322,7 +343,9 @@ PySMatchCat_repr(struct PySMatchCat* self) {
 #endif
 }
 
-
+//
+// getters
+//
 
 static PyObject *
 PySMatchCat_hpix_nside(struct PySMatchCat* self) {
@@ -333,12 +356,12 @@ PySMatchCat_hpix_area(struct PySMatchCat* self) {
     return Py_BuildValue("d", hpix_area(self->hpix->nside));
 }
 
-
 static PyObject *
 PySMatchCat_nmatches(struct PySMatchCat* self) {
     return Py_BuildValue("l", self->nmatches);
 }
 
+/*
 static PyObject* PySMatchCat_set_nmatches(struct PySMatchCat* self, PyObject *args)
 {
     PY_LONG_LONG nmatches=0;
@@ -350,17 +373,16 @@ static PyObject* PySMatchCat_set_nmatches(struct PySMatchCat* self, PyObject *ar
     self->nmatches=nmatches;
     Py_RETURN_NONE;
 }
+*/
 
 /*
 
-   Match the input ra,dec to the catalog. If no restriction
-   is set on maximum  number of matches, then matches are simply
-   appended.
+   Match the input ra,dec to the catalog. If no restriction is set on maximum
+   number of matches, then matches are simply appended.
 
-   If the number of matches is restricted (maxmatch > 0) then
-   matches are appended up to the max allowed, then the match
-   vector is converted to a heap and only matches closer than
-   the farthest current match are added.
+   If the number of matches is restricted (maxmatch > 0) then matches are
+   appended up to the max allowed, then the match vector is converted to a heap
+   and only matches closer than the farthest current match are added.
 
    parameters
 
@@ -462,6 +484,10 @@ _domatch1_bail:
     return status;
 }
 
+//
+// do the match for each entred point
+//
+
 static int domatch(struct PySMatchCat* self,
                    PyObject* raObj,
                    PyObject* decObj) {
@@ -492,10 +518,11 @@ _domatch_bail:
 }
 
 
-/*
-   Prepare for matching.  We clear the match vectors, possibly
-   reallocating or getting a maxmatch sized zerod vector
-*/
+//
+// Prepare for matching.  We clear the match vectors, possibly
+// reallocating or getting a maxmatch sized zerod vector
+//
+
 static void match_prep(struct PySMatchCat* self)
 {
     size_t i=0;
@@ -523,11 +550,11 @@ static void match_prep(struct PySMatchCat* self)
     }
 }
 
-/*
+//
+// do the matching, filling in the match vectors for each point
+// as we go
+//
 
-   do the matching and fill in the self->matches array of structures
-
-*/
 static PyObject* PySMatchCat_match(struct PySMatchCat* self, PyObject *args)
 {
     int status=0;
@@ -836,7 +863,6 @@ static PyObject* PySMatchCat_load_matches(PyObject* self, PyObject *args)
         return NULL;
     }
 
-
     for (i=0; i<nmatches; i++) {
         match = (Match* ) PyArray_GETPTR1(matchesObj, i);
         nread=fscanf(fobj,
@@ -924,14 +950,9 @@ static PyObject* PySMatchCat_copy_matches_old(struct PySMatchCat* self, PyObject
     Py_RETURN_NONE;
 }
 
-
-
-
-
-
 static PyMethodDef PySMatchCat_methods[] = {
     {"get_nmatches",           (PyCFunction)PySMatchCat_nmatches,          METH_VARARGS,  "Get the number of matches."},
-    {"_set_nmatches",           (PyCFunction)PySMatchCat_set_nmatches,          METH_VARARGS,  "Set the number of matches, useful when reading from a file."},
+    //{"_set_nmatches",           (PyCFunction)PySMatchCat_set_nmatches,          METH_VARARGS,  "Set the number of matches, useful when reading from a file."},
     {"get_hpix_nside",              (PyCFunction)PySMatchCat_hpix_nside,          METH_VARARGS,  "Get the nside for healpix."},
     {"get_hpix_area",              (PyCFunction)PySMatchCat_hpix_area,          METH_VARARGS,  "Get the nside for healpix."},
     {"match",              (PyCFunction)PySMatchCat_match,          METH_VARARGS,  "Match the catalog to the input ra,dec arrays."},
