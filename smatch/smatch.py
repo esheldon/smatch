@@ -331,7 +331,8 @@ def read_matches(filename):
     nmatches = _smatch._count_lines(filename)
     matches = numpy.zeros(nmatches, dtype=match_dtype)
 
-    _smatch._load_matches(filename, matches)
+    if nmatches > 0:
+        _smatch._load_matches(filename, matches)
     return matches
 
 

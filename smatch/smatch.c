@@ -823,6 +823,12 @@ static PyObject* PySMatchCat_load_matches(PyObject* self, PyObject *args)
     if (!PyArg_ParseTuple(args, (char*)"sO", &filename, &matchesObj)) {
         return NULL;
     }
+    nmatches = PyArray_SIZE(matchesObj);
+
+    if (nmatches <= 0) {
+        // nothing to do
+        Py_RETURN_NONE;
+    }
 
     fobj=fopen(filename, "r");
     if (fobj == NULL) {
@@ -830,7 +836,6 @@ static PyObject* PySMatchCat_load_matches(PyObject* self, PyObject *args)
         return NULL;
     }
 
-    nmatches = PyArray_SIZE(matchesObj);
 
     for (i=0; i<nmatches; i++) {
         match = (Match* ) PyArray_GETPTR1(matchesObj, i);
