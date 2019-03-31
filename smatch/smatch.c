@@ -1,3 +1,14 @@
+/*
+
+    TODO:
+        - optimizations
+            - build heap on the fly rather than pushing then heapifying 
+              when capacity is met
+            - don't make the matches arrays until needed
+            - test speed when sorting.  Currently sorting right before
+            the copy to output array and right before writing to disk
+*/
+
 #include <Python.h>
 #include <numpy/arrayobject.h> 
 
@@ -14,7 +25,6 @@ struct PySMatchCat {
     int matching_self;
 
     Catalog *cat;
-    point_vector *pts;
     struct healpix* hpix;
     struct tree_node* tree;
 
@@ -149,68 +159,6 @@ static inline void match_heap_insert(match_vector* self, const Match* match)
  * radii get converted to radians
  */
 
-/*
-static point_vector* points_init(PyObject* raObj, PyObject* decObj, PyObject* radObj) {
-    int status=0;
-
-    point_vector *pts=NULL;
-    Point* pt = NULL;
-    double *raptr=NULL, *decptr=NULL, *radptr=NULL;
-
-    npy_intp n=0, i=0, nrad=0;
-    n = PyArray_SIZE(raObj);
-    if (n <= 0) {
-        PyErr_SetString(PyExc_ValueError, "Entered ra/dec must have size > 0\n");
-        goto _points_init_bail;
-    }
-    nrad = PyArray_SIZE(radObj);
-    if (nrad != n) {
-        PyErr_Format(PyExc_ValueError, 
-                     "radii must be same length as ra,dec (%ld).  Got %ld\n",n,nrad);
-        goto _points_init_bail;
-    }
-
-    pts = point_vector_new();
-
-    vector_resize(pts, n); 
-
-    for (i=0; i<n; i++) {
-
-        pt=&pts->data[i];
-
-        raptr=PyArray_GETPTR1(raObj, i);
-        decptr=PyArray_GETPTR1(decObj, i);
-
-        status=hpix_eq2xyz(*raptr, *decptr, &pt->x, &pt->y, &pt->z);
-        if (!status) {
-            // we expect the error to be set already
-            //PyErr_Format(PyExc_ValueError, "Error converting ra,dec to xyz");
-            goto _points_init_bail;
-        }
-
-        radptr = PyArray_GETPTR1(radObj, i);
-        pt->radius = (*radptr)*D2R;
-        pt->cos_radius = cos( pt->radius );
-
-    }
-
-_points_init_bail:
-
-    if (!status && pts) {
-        // pts set to NULL
-        vector_free(pts);
-    }
-    return pts;
-}
-*/
-
-/*
- * We assume these are in degrees, double precision, and are numpy arrays of
- * same length
- *
- * radii get converted to radians
- */
-
 static Catalog* catalog_init(PyObject* raObj, PyObject* decObj, PyObject* radObj) {
     int status=0;
 
@@ -237,10 +185,7 @@ static Catalog* catalog_init(PyObject* raObj, PyObject* decObj, PyObject* radObj
 
     for (i=0; i<n; i++) {
 
-        fprintf(stderr,"initializing entry: %lu\n", i);
         entry = &cat->data[i];
-        fprintf(stderr,"match size: %lu\n", vector_size(entry->matches));
-        fprintf(stderr,"match capacity: %lu\n", vector_capacity(entry->matches));
 
         pt=&entry->point;
 
@@ -248,7 +193,6 @@ static Catalog* catalog_init(PyObject* raObj, PyObject* decObj, PyObject* radObj
         decptr=PyArray_GETPTR1(decObj, i);
 
         status=hpix_eq2xyz(*raptr, *decptr, &pt->x, &pt->y, &pt->z);
-        fprintf(stderr,"xyz: %g %g %g\n", pt->x, pt->y, pt->z);
         if (!status) {
             // we expect the error to be set already
             //PyErr_Format(PyExc_ValueError, "Error converting ra,dec to xyz");
@@ -270,39 +214,6 @@ _catalog_init_bail:
     }
     return cat;
 }
-
-
-// create a tree based on the healpix id
-/*
-static struct tree_node* create_tree_old(struct healpix* hpix, point_vector* pts) {
-    struct tree_node* tree=NULL;
-    lvector* listpix=NULL;
-    Point* pt=NULL;
-    int64_t hpix_id=0;
-    int64_t half_npix=0;
-    size_t index=0, ihpix=0;
-    
-    listpix = lvector_new();
-
-    // this will produce a more balanced tree across the whole sky
-    half_npix = hpix->npix/2;
-
-    pt=pts->data;
-    for (index=0; index < pts->size; index++) {
-
-        pt = &pts->data[index];
-        hpix_disc_intersect(hpix, pt->x, pt->y, pt->z, pt->radius, listpix);
-
-        for (ihpix=0; ihpix < listpix->size; ihpix++) {
-            hpix_id = listpix->data[ihpix];
-            tree_insert(&tree, hpix_id-half_npix, index);
-        }
-    }
-    vector_free(listpix);
-
-    return tree;
-}
-*/
 
 static struct tree_node* create_tree(struct healpix* hpix, Catalog* cat) {
     struct tree_node* tree=NULL;
@@ -349,7 +260,6 @@ PySMatchCat_init(struct PySMatchCat* self, PyObject *args, PyObject *kwds)
 
     self->tree=NULL;
     self->hpix=NULL;
-    self->pts=NULL;
 
     self->matches = match_vector_new();
 
@@ -359,14 +269,6 @@ PySMatchCat_init(struct PySMatchCat* self, PyObject *args, PyObject *kwds)
         goto _catalog_init_cleanup;
     }
 
-    self->pts=NULL;
-    //self->pts = points_init(raObj, decObj, radObj);
-    //if (self->pts==NULL) {
-    //    err=1;
-    //    goto _catalog_init_cleanup;
-    //}
-
-    fprintf(stderr,"initializing cat\n");
     self->cat = catalog_init(raObj, decObj, radObj);
     if (self->cat==NULL) {
         err=1;
@@ -381,7 +283,6 @@ PySMatchCat_init(struct PySMatchCat* self, PyObject *args, PyObject *kwds)
 
 _catalog_init_cleanup:
     if (err != 0) {
-        vector_free(self->pts);
         cat_free(self->cat);
         self->hpix = hpix_delete(self->hpix);
         self->tree = tree_delete(self->tree);
@@ -395,7 +296,6 @@ static void
 PySMatchCat_dealloc(struct PySMatchCat* self)
 {
 
-    vector_free(self->pts);
     cat_free(self->cat);
     self->hpix = hpix_delete(self->hpix);
     self->tree = tree_delete(self->tree);
@@ -453,136 +353,32 @@ static PyObject* PySMatchCat_set_nmatches(struct PySMatchCat* self, PyObject *ar
 
 /*
 
-   Match the input ra,dec to the catalog. All matches are stored
-   initially, and if the max number of matches is specified, then
-   the result is sorted and the closest are returned.
+   Match the input ra,dec to the catalog. If no restriction
+   is set on maximum  number of matches, then matches are simply
+   appended.
+
+   If the number of matches is restricted (maxmatch > 0) then
+   matches are appended up to the max allowed, then the match
+   vector is converted to a heap and only matches closer than
+   the farthest current match are added.
 
    parameters
 
    self: the catalog
    ra, dec: the point to match from the second catalog
    input_ind: the index in the second catalog
-   matches: the match vector to fill
+   match_incr: this gets filled with the increase
+     in match count.  If a new match is found and
+     replaces an older farther match, the match
+     count is not incremented.
 
-*/
-
-static int domatch1_old(const struct PySMatchCat* self, 
-                    double ra,
-                    double dec,
-                    size_t input_ind,
-                    match_vector* matches) {
-
-    int status=0;
-
-    int64_t hpixid=0;
-    struct tree_node* node=NULL;
-    int64_t half_npix=0;
-
-    size_t i=0;
-    int64_t cat_ind=0;
-    double x=0,y=0,z=0;
-    double cos_angle=0;
-
-    Match match={0};
-
-    vector_resize(matches,0);
-
-    half_npix = self->hpix->npix/2;
-    hpixid = hpix_eq2pix(self->hpix, ra, dec, &status);
-    if (!status) {
-        goto _domatch1_bail;
-    }
-
-    hpixid -= half_npix;
-
-    node = tree_find(self->tree, hpixid);
-
-    if (node != NULL) {
-        Point* pt=NULL;
-        status=hpix_eq2xyz(ra,dec,&x,&y,&z);
-        if (!status) {
-            goto _domatch1_bail;
-        }
-
-        for (i=0; i<node->indices->size; i++) {
-            // index into other list
-            cat_ind = node->indices->data[i];
-
-            if (self->matching_self && cat_ind == input_ind) {
-                continue;
-            }
-
-            pt = &self->pts->data[cat_ind];
-
-            cos_angle = pt->x*x + pt->y*y + pt->z*z;
-
-            if (cos_angle > pt->cos_radius) {
-                match.cat_ind=cat_ind;
-                match.input_ind=(int64_t)input_ind;
-                match.cosdist=cos_angle;
-                vector_push(matches, match);
-            }
-        }
-    }
-
-    if (self->maxmatch > 0 && self->maxmatch < matches->size) {
-        // max match count was given
-        // If we have too many matches, sort closest first and take
-        // the closest maxmatch matches
-        match_vector_sort(matches);
-        vector_resize(matches, self->maxmatch);
-    }
-
-_domatch1_bail:
-    return status;
-}
-
-/*
-
-static int domatch_old(struct PySMatchCat* self,
-                   PyObject* raObj,
-                   PyObject* decObj) {
-    int status=0;
-
-    size_t i=0, n=0;
-    double *raptr=NULL, *decptr=NULL;
-    match_vector* new_matches = match_vector_new();
-
-    // always reset the match structure
-    vector_clear(self->matches);
-    self->nmatches=0;
-
-    n = PyArray_SIZE(raObj);
-    for (i=0; i<n ; i++) {
-
-        raptr=PyArray_GETPTR1(raObj, i);
-        decptr=PyArray_GETPTR1(decObj, i);
-
-        status=domatch1_old(self, *raptr, *decptr, i, new_matches);
-        if (!status) {
-            goto _domatch_bail;
-        }
-
-        if (new_matches->size == 0) {
-            continue;
-        }
-
-        push_matches(self->matches, new_matches);
-        self->nmatches += new_matches->size;
-
-    }
-    vector_free(new_matches);
-
-_domatch_bail:
-    return status;
-}
 */
 
 static int domatch1(struct PySMatchCat* self, 
-                        double ra,
-                        double dec,
-                        size_t input_ind,
-                        size_t* match_incr) {
+                    double ra,
+                    double dec,
+                    size_t input_ind,
+                    size_t* match_incr) {
 
     int status=0;
 
@@ -629,12 +425,9 @@ static int domatch1(struct PySMatchCat* self,
                 continue;
             }
 
-            fprintf(stderr,"getting cat entry: %ld\n", cat_ind);
             entry = &self->cat->data[cat_ind];
-            fprintf(stderr,"done getting cat entry\n");
             pt = &entry->point;
 
-            fprintf(stderr,"xyz: %g %g %g\n", pt->x, pt->y, pt->z);
             cos_angle = pt->x*x + pt->y*y + pt->z*z;
 
             if (cos_angle > pt->cos_radius) {
@@ -642,13 +435,9 @@ static int domatch1(struct PySMatchCat* self,
                 match.input_ind=(int64_t)input_ind;
                 match.cosdist=cos_angle;
 
-                fprintf(stderr,"    getting matches\n");
                 matches = entry->matches;
-                fprintf(stderr,"    got matches with size %lu\n", vector_size(matches));
 
-                fprintf(stderr,"        testing what to do\n");
                 if (self->maxmatch <= 0 || vector_size(matches) < self->maxmatch) {
-                    fprintf(stderr,"pushing\n");
                     // we increment for new matches
                     *match_incr += 1;
                     // just keep adding entries
@@ -657,14 +446,12 @@ static int domatch1(struct PySMatchCat* self,
                     // if we are now at capacity, heapify it unless maxmatch
                     // is size one, in which case it is already a heap
                     if (self->maxmatch > 1 && vector_size(matches)==self->maxmatch) {
-                        fprintf(stderr,"building heap\n");
                         match_build_heap(matches);
                     }
                 } else {
                     // note the number of matches is *not* incremented
 
                     // add only if closer than the farthest match
-                    fprintf(stderr,"heap insert\n");
                     match_heap_insert(matches, &match);
                 }
             }
@@ -688,7 +475,6 @@ static int domatch(struct PySMatchCat* self,
     n = PyArray_SIZE(raObj);
     for (i=0; i<n ; i++) {
 
-        fprintf(stderr,"i: %ld\n", i);
         raptr=PyArray_GETPTR1(raObj, i);
         decptr=PyArray_GETPTR1(decObj, i);
 
@@ -731,13 +517,8 @@ static void match_prep(struct PySMatchCat* self)
                 vector_resize(entry->matches,0);
             }
         } else {
-            //vector_realloc(entry->matches, self->maxmatch);
+            vector_realloc(entry->matches, self->maxmatch);
             vector_resize(entry->matches, 0);
-            fprintf(stderr,"    matches has size %lu\n", vector_size(entry->matches));
-            // we want to start with a fixed size match array with
-            // all zeros.  Easiest to just get a new one with zeros
-            //vector_free(entry->matches);
-            //entry->matches = match_vector_zeros(self->maxmatch);
         }
     }
 }
@@ -771,27 +552,93 @@ static PyObject* PySMatchCat_match(struct PySMatchCat* self, PyObject *args)
     }
 }
 
-static int domatch2file(struct PySMatchCat* self,
-                        PyObject* raObj,
-                        PyObject* decObj,
-                        const char* filename) {
-    int status=0;
-    size_t i=0, j=0, n=0;
-    double *raptr=NULL, *decptr=NULL;
-    FILE* fobj=NULL;
-    const Match *m=NULL;
-    match_vector* matches = match_vector_new();
+/*
 
-    // always reset the match structure, even though
-    // we are writing to a file
-    vector_clear(self->matches);
-    self->nmatches=0;
+   send matches to a file for the case of not limiting matches
 
-    fobj=fopen(filename, "w");
-    if (fobj == NULL) {
-        PyErr_Format(PyExc_IOError, "Could not open file for writing: '%s'", filename);
-        goto _domatch2file_bail;
+   don't call this function if you are limiting matches
+
+*/
+static int domatch1_2file(struct PySMatchCat* self, 
+                          double ra,
+                          double dec,
+                          size_t input_ind,
+                          FILE* fobj,
+                          size_t* match_incr) {
+
+    int status=0, nret=0;
+
+    CatalogEntry* entry=NULL;
+    Point* pt=NULL;
+
+    int64_t hpixid=0;
+    struct tree_node* node=NULL;
+    int64_t half_npix=0;
+
+    size_t i=0;
+    int64_t cat_ind=0;
+    double x=0,y=0,z=0;
+    double cos_angle=0;
+
+    *match_incr = 0;
+
+    half_npix = self->hpix->npix/2;
+    hpixid = hpix_eq2pix(self->hpix, ra, dec, &status);
+    if (!status) {
+        goto _domatch1_2file_bail;
     }
+
+    hpixid -= half_npix;
+
+    node = tree_find(self->tree, hpixid);
+
+    if (node != NULL) {
+
+
+        status=hpix_eq2xyz(ra,dec,&x,&y,&z);
+        if (!status) {
+            goto _domatch1_2file_bail;
+        }
+
+        for (i=0; i<node->indices->size; i++) {
+            // index into other list
+            cat_ind = node->indices->data[i];
+
+            if (self->matching_self && cat_ind == input_ind) {
+                continue;
+            }
+
+            entry = &self->cat->data[cat_ind];
+            pt = &entry->point;
+
+            cos_angle = pt->x*x + pt->y*y + pt->z*z;
+
+            if (cos_angle > pt->cos_radius) {
+                *match_incr += 1;
+                nret = fprintf(fobj, "%ld %ld %.16g\n", cat_ind, input_ind, cos_angle);
+                if (nret == 0) {
+                    status = 0;
+                    goto _domatch1_2file_bail;
+                }
+            }
+        }
+    }
+
+    status=1;
+
+_domatch1_2file_bail:
+    return status;
+}
+
+static int domatch2file_all(struct PySMatchCat* self,
+                            PyObject* raObj,
+                            PyObject* decObj,
+                            FILE* fobj) {
+
+    int status=0;
+    size_t i=0, j=0, n=0, match_incr=0;
+    double *raptr=NULL, *decptr=NULL;
+    const Match *m=NULL;
 
     n = PyArray_SIZE(raObj);
     for (i=0; i<n ; i++) {
@@ -799,19 +646,73 @@ static int domatch2file(struct PySMatchCat* self,
         raptr=PyArray_GETPTR1(raObj, i);
         decptr=PyArray_GETPTR1(decObj, i);
 
-        status=domatch1_old(self, *raptr, *decptr, i, matches);
+        status=domatch1_2file(self, *raptr, *decptr, i, fobj, &match_incr);
+        if (!status) {
+            goto _domatch2fileall_bail;
+        }
+
+        self->nmatches += match_incr;
+
+    }
+
+_domatch2fileall_bail:
+
+    return status;
+
+}
+
+static int write_matches(struct PySMatchCat* self, FILE *fobj)
+{
+    size_t i=0, j=0;
+    match_vector *matches=NULL;
+    Match* match=NULL;
+    int status=0, nret=0;
+
+    for (i=0; i<self->cat->size; i++) {
+        matches = self->cat->data[i].matches;
+        //match_vector_sort(matches);
+
+        for (j=0; j<vector_size(matches); j++) {
+            match = &vector_get(matches, j);
+            nret = fprintf(fobj, "%ld %ld %.16g\n",
+                           match->cat_ind, match->input_ind, match->cosdist);
+            if (nret == 0) {
+                status=0;
+                goto _write_matches_bail;
+            }
+        }
+    }
+
+    status=1;
+
+_write_matches_bail:
+    return status;
+}
+
+static int domatch2file(struct PySMatchCat* self,
+                        PyObject* raObj,
+                        PyObject* decObj,
+                        const char* filename) {
+    int status=0;
+    FILE* fobj=NULL;
+
+    fobj=fopen(filename, "w");
+    if (fobj == NULL) {
+        PyErr_Format(PyExc_IOError, "Could not open file for writing: '%s'", filename);
+        goto _domatch2file_bail;
+    }
+
+    if (self->maxmatch <= 0) {
+        // keeping all matches
+        status = domatch2file_all(self, raObj, decObj,fobj);
+    } else {
+        // do all matches, *then* write to the file
+        status = domatch(self, raObj, decObj);
         if (!status) {
             goto _domatch2file_bail;
         }
-
-        for (j=0; j<matches->size; j++) {
-            m=&matches->data[j];
-            fprintf(fobj, "%ld %ld %.16g\n", m->cat_ind, m->input_ind, m->cosdist);
-        }
-        self->nmatches += matches->size;
-
+        status = write_matches(self, fobj);
     }
-    vector_free(matches);
 
 
 _domatch2file_bail:
@@ -822,7 +723,6 @@ _domatch2file_bail:
 
     return status;
 }
-
 
 /*
 
@@ -976,7 +876,6 @@ static PyObject* PySMatchCat_copy_matches(struct PySMatchCat* self, PyObject *ar
         return NULL;
     }
 
-    fprintf(stderr,"copying matches\n");
     matches = PyArray_DATA(matchesObj);
 
     for (i=0; i< self->cat->size; i++) {
@@ -985,6 +884,11 @@ static PyObject* PySMatchCat_copy_matches(struct PySMatchCat* self, PyObject *ar
         nmatch = vector_size(tmatches);
         if (nmatch > 0) {
 
+            // we can traverse heap in order rather than doing this, not sure
+            // which is faster
+            // but this can be a hit in performance when the match vectors
+            // get large
+            //match_vector_sort(tmatches);
             memmove(&matches[mindex],
                     tmatches->data,
                     nmatch*sizeof(Match) );
