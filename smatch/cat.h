@@ -3,10 +3,10 @@
 
 #include <stdint.h>
 #include "vector.h"
-#include "point.h"
+#include "catpoint.h"
 
 typedef struct {
-    Point point;
+    CatPoint point;
     // remove
     match_vector *matches;
     // list of healpix ids that intersect the disc around

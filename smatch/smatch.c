@@ -19,6 +19,7 @@
 #include "vector.h"
 #include "tree.h"
 #include "healpix.h"
+#include "catpoint.h"
 #include "cat.h"
 
 struct PySMatchCat {
@@ -216,7 +217,7 @@ static Catalog* catalog_init(PyObject* raObj,
 
     Catalog *cat=NULL;
     CatalogEntry *entry=NULL;
-    Point* pt = NULL;
+    CatPoint* cpt = NULL;
     double *raptr=NULL, *decptr=NULL, *radptr=NULL;
 
     npy_intp n=0, i=0, nrad=0;
@@ -239,22 +240,22 @@ static Catalog* catalog_init(PyObject* raObj,
 
         entry = &cat->data[i];
 
-        pt=&entry->point;
+        cpt=&entry->point;
 
         raptr=PyArray_GETPTR1(raObj, i);
         decptr=PyArray_GETPTR1(decObj, i);
 
-        status=hpix_eq2xyz(*raptr, *decptr, &pt->x, &pt->y, &pt->z);
+        status=hpix_eq2xyz(*raptr, *decptr, &cpt->x, &cpt->y, &cpt->z);
         if (!status) {
             // we expect the error to be set already
             goto _catalog_init_bail;
         }
 
         radptr = PyArray_GETPTR1(radObj, i);
-        pt->radius = (*radptr)*D2R;
-        pt->cos_radius = cos( pt->radius );
+        cpt->radius = (*radptr)*D2R;
+        cpt->cos_radius = cos( cpt->radius );
 
-        hpix_disc_intersect(hpix, pt->x, pt->y, pt->z, pt->radius, entry->disc_pixels);
+        hpix_disc_intersect(hpix, cpt->x, cpt->y, cpt->z, cpt->radius, entry->disc_pixels);
 
     }
 
@@ -494,7 +495,7 @@ static int domatch1(struct PySMatchCat* self,
     int status=0;
 
     CatalogEntry* entry=NULL;
-    Point *cat_pt=NULL;
+    CatPoint *cpt=NULL;
     Point *pt=NULL;
 
     int64_t hpixid=0;
@@ -527,12 +528,12 @@ static int domatch1(struct PySMatchCat* self,
 
                 input_ind = vector_get(node->indices, j);
 
-                cat_pt = &entry->point;
+                cpt = &entry->point;
                 pt = &points->data[input_ind];
 
-                cos_angle = pt->x*cat_pt->x + pt->y*cat_pt->y + pt->z*cat_pt->z;
+                cos_angle = pt->x*cpt->x + pt->y*cpt->y + pt->z*cpt->z;
 
-                if (cos_angle > cat_pt->cos_radius) {
+                if (cos_angle > cpt->cos_radius) {
                     match.cat_ind=cat_ind;
                     match.input_ind=(int64_t)input_ind;
                     match.cosdist=cos_angle;
@@ -814,7 +815,7 @@ static int domatch1_2file(struct PySMatchCat* self,
     int status=0, nret=0;
 
     CatalogEntry* entry=NULL;
-    Point* pt=NULL;
+    CatPoint* cpt=NULL;
 
     int64_t hpixid=0;
     struct tree_node* node=NULL;
@@ -854,11 +855,11 @@ static int domatch1_2file(struct PySMatchCat* self,
             }
 
             entry = &self->cat->data[cat_ind];
-            pt = &entry->point;
+            cpt = &entry->point;
 
-            cos_angle = pt->x*x + pt->y*y + pt->z*z;
+            cos_angle = cpt->x*x + cpt->y*y + cpt->z*z;
 
-            if (cos_angle > pt->cos_radius) {
+            if (cos_angle > cpt->cos_radius) {
                 *match_incr += 1;
                 nret = fprintf(fobj, "%ld %ld %.16g\n", cat_ind, input_ind, cos_angle);
                 if (nret == 0) {
