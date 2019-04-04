@@ -11,6 +11,10 @@ Examples
 
 import smatch
 
+# This code uses the ring configuration. This means nside can be any  positive
+# integer between 1 and 2**28=268435456, although beware the memory usage grows
+# with nside
+
 nside=4096 # healpix nside
 maxmatch=1 # return closest match
 
