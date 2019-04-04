@@ -164,6 +164,44 @@ static inline void match_heap_insert(match_vector* self, const Match* match)
 }
 
 //
+// uses more memory than we need, need to make a simpler point
+// struct
+point_vector* make_points(PyObject* raObj, PyObject* decObj, int* status)
+{
+    size_t i=0, n=0;
+    point_vector* points=NULL;
+    Point pt={0};
+    double *raptr=NULL, *decptr=NULL;
+
+    n = PyArray_SIZE(raObj);
+    points = point_vector_new();
+    vector_resize(points, n);
+
+    for (i=0; i<n; i++) {
+
+        raptr=PyArray_GETPTR1(raObj, i);
+        decptr=PyArray_GETPTR1(decObj, i);
+
+        *status=hpix_eq2xyz(*raptr, *decptr, &pt.x, &pt.y, &pt.z);
+        if (! (*status) ) {
+            goto _make_points_bail;
+        }
+
+        vector_set(points, i, pt); 
+
+    }
+
+    *status=1;
+
+_make_points_bail:
+
+    if (! (*status) ) {
+        vector_free(points);
+    }
+    return points;
+}
+
+//
 // We assume these are in degrees, double precision, and are numpy arrays of
 // same length
 //
@@ -451,13 +489,12 @@ static PyObject* PySMatchCat_set_nmatches(struct PySMatchCat* self, PyObject *ar
 static int domatch1(struct PySMatchCat* self, 
                     struct tree_node* tree,
                     size_t cat_ind,
-                    PyObject* raObj,
-                    PyObject* decObj)
+                    point_vector* points)
 {
     int status=0;
 
-    double *raptr=NULL, *decptr=NULL;
     CatalogEntry* entry=NULL;
+    Point *cat_pt=NULL;
     Point *pt=NULL;
 
     int64_t hpixid=0;
@@ -465,7 +502,6 @@ static int domatch1(struct PySMatchCat* self,
     int64_t half_npix=0;
 
     size_t i=0, j=0, input_ind=0;
-    double x=0,y=0,z=0;
     double cos_angle=0;
 
     int64_t maxmatch = self->maxmatch;
@@ -491,19 +527,12 @@ static int domatch1(struct PySMatchCat* self,
 
                 input_ind = vector_get(node->indices, j);
 
-                raptr=PyArray_GETPTR1(raObj, input_ind);
-                decptr=PyArray_GETPTR1(decObj, input_ind);
+                cat_pt = &entry->point;
+                pt = &points->data[input_ind];
 
-                status=hpix_eq2xyz(*raptr, *decptr, &x, &y, &z);
-                if (!status) {
-                    // we expect the error to be set already
-                    goto _domatch1_bail;
-                }
+                cos_angle = pt->x*cat_pt->x + pt->y*cat_pt->y + pt->z*cat_pt->z;
 
-                pt = &entry->point;
-                cos_angle = pt->x*x + pt->y*y + pt->z*z;
-
-                if (cos_angle > pt->cos_radius) {
+                if (cos_angle > cat_pt->cos_radius) {
                     match.cat_ind=cat_ind;
                     match.input_ind=(int64_t)input_ind;
                     match.cosdist=cos_angle;
@@ -530,13 +559,14 @@ static int domatch1(struct PySMatchCat* self,
                     }
 
                 } // within distance
+
             } // loop over indices in node
         } // id found in tree
     } // loop over disc pixel ids
 
     status=1;
 
-_domatch1_bail:
+//_domatch1_bail:
     return status;
 }
 
@@ -553,7 +583,14 @@ static int domatch(struct PySMatchCat* self,
 
     struct tree_node* tree=NULL;
 
+    point_vector* points=NULL;
+
     tree = create_hpix_tree(self->hpix, raObj, decObj, &status);
+    if (!status) {
+        goto _domatch_bail;
+    }
+
+    points = make_points(raObj, decObj, &status);
     if (!status) {
         goto _domatch_bail;
     }
@@ -562,15 +599,18 @@ static int domatch(struct PySMatchCat* self,
 
     for (i=0; i< self->cat->size ; i++) {
 
-        status = domatch1(self, tree, i, raObj, decObj);
+        status = domatch1(self, tree, i, points);
         if (!status) {
             goto _domatch_bail;
         }
 
     }
-    tree = tree_delete(tree);
 
 _domatch_bail:
+
+    tree = tree_delete(tree);
+    vector_free(points);
+
     return status;
 }
 
