@@ -1,6 +1,6 @@
 A python code for matching points on the sphere using healpix.
 
-This code is about 3.5 times faster than HTM in the esutil library.
+This code is about 5-10 times faster than HTM in the esutil library.
 
 Examples
 --------
