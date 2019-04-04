@@ -8,4 +8,4 @@ from .smatch import (
 )
 from .test import test
 
-__version__ = '0.1.0'
+__version__ = '0.9.0.1'
