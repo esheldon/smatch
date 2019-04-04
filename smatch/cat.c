@@ -22,18 +22,20 @@ Catalog* cat_new(size_t n)
 
     for (i=0; i<self->size; i++) {
         self->data[i].matches = match_vector_new();
+        self->data[i].disc_pixels = lvector_new();
     }
 
     return self;
 }
 
-void cat_free_matches(Catalog* self)
+void cat_free_data(Catalog* self)
 {
     size_t i=0;
 
     if (self) {
         for (i=0; i < self->size; i++) {
-            vector_free(self->data[i].matches);
+            //vector_free(self->data[i].matches);
+            vector_free(self->data[i].disc_pixels);
         }
     }
 }
