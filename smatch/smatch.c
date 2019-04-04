@@ -734,6 +734,7 @@ static int domatch2file(struct PySMatchCat* self,
         status = domatch2file_all(self, raObj, decObj,fobj);
     } else {
         // do all matches, *then* write to the file
+        match_prep(self);
         status = domatch(self, raObj, decObj);
         if (!status) {
             goto _domatch2file_bail;
