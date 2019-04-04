@@ -1,6 +1,6 @@
 A python code for matching points on the sphere using healpix.
 
-This code is about 3.5 times faster than HTM in the esutil library.
+This code is about 5-10 times faster than HTM in the esutil library.
 
 Examples
 --------
@@ -10,6 +10,10 @@ Examples
 # For quick matches, use the match() function
 
 import smatch
+
+# This code uses the ring configuration. This means nside can be any  positive
+# integer between 1 and 2**28=268435456, although beware the memory usage grows
+# with nside
 
 nside=4096 # healpix nside
 maxmatch=1 # return closest match
@@ -66,12 +70,10 @@ matches = cat.matches
 # matching the catalog to itself, ignoring exact matches
 cat.match_self(maxmatch=maxmatch)
 
-#
 # Writing matches to  file
 # 
 # This useful if the number of matches is large, and cannot be
-# held in memory. But note if restricting the number of matches
-# with maxmatch >= 0 then no memory is saved.
+# held in memory.
 
 # using the convenience function
 fname="matches.dat"
@@ -122,14 +124,12 @@ OK
 Timings
 --------
 
-For catalogs with object density of the Dark Energy Survey, searching within 10
-arcseconds, higher `nside` results in faster search times, with some tradeoff
+For catalogs with object density of ~30/sq arcmin, searching within 2
+or 10 arcseconds, higher `nside` results in faster search times, with some tradeoff
 in memory usage.  4096 or 2048 are probably sufficient for this use case.
-
-![Timings vs nside](data/smatch-times.png?raw=true "Timings vs Nside for DES catalogs")
 
 For larger search radii, smaller nside, and thus larger area pixels, works
 better; for example with the same catalog and a 200 arcsec search radius,
 nside=2048 is faster.
 
-![Timings vs nside](data/smatch-times-200.png?raw=true "Timings vs Nside for DES catalogs")
+![Timings vs nside](data/smatch-times-density-30.png?raw=true "Timings vs Nside for density=30/sq arcmin")

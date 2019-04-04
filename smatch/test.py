@@ -148,6 +148,46 @@ class TestSMatch(unittest.TestCase):
                 if os.path.exists(fname):
                     os.remove(fname)
 
+    def testMatchSelf2File(self):
+
+        # scalar radius
+        radius=self.two
+        radii = numpy.zeros(self.ra2.size) + self.two
+
+        for rad in [radius, radii]:
+            fname=tempfile.mktemp(prefix="testSMatch2File",suffix='.dat')
+
+            try:
+                if numpy.isscalar(rad):
+                    rstr=' scalar radius'
+                else:
+                    rstr=' array radius'
+
+                cat, ok = self.make_cat(rad, set=2)
+                self.assertTrue(ok,"creating Catalog object")
+
+                if not ok:
+                    skipTest("cannot test result if Catalog object creation fails")
+
+                for maxmatch, expected in zip(self.maxmatches,self.expected_self):
+                    cat.match_self(file=fname, maxmatch=maxmatch)
+
+                    self.check_matches(cat.get_nmatches(),
+                                       expected,
+                                       maxmatch,
+                                       rstr+' get_nmatches')
+                    matches=read_matches(fname)
+                    self.check_matches(matches.size,
+                                       expected,
+                                       maxmatch,
+                                       rstr+' matches.size')
+
+            finally:
+                if os.path.exists(fname):
+                    os.remove(fname)
+
+
+
     def check_matches(self, nmatches, expected, maxmatch,extra):
         mess="expected %d matches with maxmatch=%d, got %d (%s)"
         mess = mess % (expected, maxmatch, nmatches, extra),
