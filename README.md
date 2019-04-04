@@ -70,12 +70,10 @@ matches = cat.matches
 # matching the catalog to itself, ignoring exact matches
 cat.match_self(maxmatch=maxmatch)
 
-#
 # Writing matches to  file
 # 
 # This useful if the number of matches is large, and cannot be
-# held in memory. But note if restricting the number of matches
-# with maxmatch >= 0 then no memory is saved.
+# held in memory.
 
 # using the convenience function
 fname="matches.dat"
