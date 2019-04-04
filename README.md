@@ -122,14 +122,12 @@ OK
 Timings
 --------
 
-For catalogs with object density of the Dark Energy Survey, searching within 10
-arcseconds, higher `nside` results in faster search times, with some tradeoff
+For catalogs with object density of ~30/sq arcmin, searching within 2
+or 10 arcseconds, higher `nside` results in faster search times, with some tradeoff
 in memory usage.  4096 or 2048 are probably sufficient for this use case.
-
-![Timings vs nside](data/smatch-times.png?raw=true "Timings vs Nside for DES catalogs")
 
 For larger search radii, smaller nside, and thus larger area pixels, works
 better; for example with the same catalog and a 200 arcsec search radius,
 nside=2048 is faster.
 
-![Timings vs nside](data/smatch-times-200.png?raw=true "Timings vs Nside for DES catalogs")
+![Timings vs nside](data/smatch-times-density-30.png?raw=true "Timings vs Nside for density=30/sq arcmin")
