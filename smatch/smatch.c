@@ -448,6 +448,10 @@ static void domatch1(struct PySMatchCat* self,
 
                 input_ind = vector_get(node->indices, j);
 
+                if (self->matching_self && input_ind==cat_ind) {
+                    continue;
+                }
+
                 pt = &points->data[input_ind];
 
                 cos_angle = pt->x*cpt->x + pt->y*cpt->y + pt->z*cpt->z;
@@ -522,6 +526,9 @@ static int domatch1_2file_all(struct PySMatchCat* self,
             for (j=0; j < vector_size(node->indices); j++) {
 
                 input_ind = vector_get(node->indices, j);
+                if (self->matching_self && input_ind==cat_ind) {
+                    continue;
+                }
 
                 pt = &points->data[input_ind];
 
