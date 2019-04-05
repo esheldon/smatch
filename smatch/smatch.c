@@ -554,6 +554,7 @@ static int domatch(struct PySMatchCat* self,
     ncat=(size_t)PyArray_SIZE(craObj);
     nrad=(size_t)PyArray_SIZE(cradiusObj);
 
+    // the tree can dominate the memory
     tree = create_hpix_tree(self->hpix, raObj, decObj, &status);
     if (!status) {
         goto _domatch_bail;
