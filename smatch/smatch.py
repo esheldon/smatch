@@ -4,7 +4,7 @@ import numpy as np
 from . import _smatch
 
 # area 0.013114 square degrees
-NSIDE_DEFAULT=2048
+NSIDE_DEFAULT=4096
 
 def match(ra1, dec1, radius1, ra2, dec2,
           nside=NSIDE_DEFAULT, maxmatch=1,
