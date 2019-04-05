@@ -7,7 +7,7 @@ import smatch
 import time
 
 parser=argparse.ArgumentParser()
-parser.add_argument('--ntrial',type=int,default=100)
+parser.add_argument('--ntrial',type=int,default=200)
 parser.add_argument('--density-arcmin',type=float,default=30)
 parser.add_argument('--area-arcmin',type=float,default=40)
 
@@ -55,7 +55,6 @@ def main():
     np.random.seed(args.seed)
 
 
-    #nsides=[512,1024,2048,4096,8192]
     nsides=np.arange(500,8200,500)
 
     key=biggles.PlotKey(0.1, 0.9, halign='left')
@@ -64,9 +63,7 @@ def main():
         ylabel='time [s]',
         aspect_ratio=1,
         xrange=[0.0, 1.05*nsides[-1]],
-        #yrange=[0.002,0.1],
         yrange=[0.0,0.04],
-        #ylog=True,
         key=key,
     )
     radii_arcsec = [
