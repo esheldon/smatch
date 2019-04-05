@@ -135,4 +135,9 @@ For larger search radii, smaller nside, and thus larger area pixels, works
 better; for example with the same catalog and a 200 arcsec search radius,
 nside=2048 is faster.
 
+On the other hand, for very high density catalogs and small search radii,
+the fastest nside may be upwards of 20,000-100,000 (nside is not required
+to be a factor of 2).  Basically, you may want to try out a few different
+nside values for your specific problem.
+
 ![Timings vs nside](data/smatch-times-density-30.png?raw=true "Timings vs Nside for density=30/sq arcmin")
