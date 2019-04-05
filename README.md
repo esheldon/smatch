@@ -109,7 +109,7 @@ Unit Tests
 All unit tests should pass
 ```
 import smatch
-smatch.test()
+smatch.test.test()
 
 testCreate (smatch.test.TestSMatch) ... ok
 testMatch (smatch.test.TestSMatch) ... ok

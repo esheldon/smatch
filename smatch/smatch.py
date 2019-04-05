@@ -45,8 +45,7 @@ def match(ra1, dec1, radius1, ra2, dec2,
         Structured array with fields
 
             i1: index in the primary Catalog
-            i2: index in the second set of points (sent as arguments
-                to match2file)
+            i2: index in the second set of points
             cos(dist): cosine of the angular distance
                 between the points
 
@@ -97,8 +96,7 @@ def match_self(ra, dec, radius,
         Structured array with fields
 
             i1: index in the primary Catalog
-            i2: index in the second set of points (sent as arguments
-                to match2file)
+            i2: index in the second set of points
             cos(dist): cosine of the angular distance
                 between the points
 
@@ -151,15 +149,14 @@ class Catalog(_smatch.Catalog):
         -------
         structure with the following structure
             i1: index in the primary Catalog
-            i2: index in the second set of points (sent to match or
-                match2file)
+            i2: index in the second set of points
             cos(dist): cosine of the angular distance
                 between the points
         """
         if self._matches is None:
             raise RuntimeError("no match structure found; either run "
                                "match() first or load results from a "
-                               "file if you ran match2file()")
+                               "file if you wrote matches")
 
         return self._matches
 
@@ -241,30 +238,6 @@ class Catalog(_smatch.Catalog):
             file,
         )
 
-    def match2file(self, filename, ra, dec, maxmatch=1):
-        """
-        deprecated, use match(..., file=filename)
-
-        match the catalog to the second set of points, writing
-        results to a file
-
-
-        parameters
-        ----------
-        filename: string
-            File in which to write the matches
-        ra: array
-            ra to match, in degrees
-        dec: array
-            dec to match, in degrees
-        maxmatch: int, optional
-            maximum number of matches to allow per point. The closest maxmatch
-            matches will be kept.  Default is 1, which implles keepin the
-            closest match.  Set to <= 0 to keep all matches.
-        """
-
-        self.match(ra, dec, maxmatch=maxmatch, file=filename)
-
     def _match(self, maxmatch, matching_self, ra, dec, file):
         """
         We keep all the logic of choosing different methods here
@@ -322,8 +295,7 @@ def read_matches(filename):
     matches: structured array
         array with fields
             i1: index in the primary Catalog
-            i2: index in the second set of points (sent as arguments
-                to match2file)
+            i2: index in the second set of points
             cos(dist): cosine of the angular distance
                 between the points
 
