@@ -4,7 +4,7 @@ import numpy as np
 from . import _smatch
 
 # area 0.013114 square degrees
-NSIDE_DEFAULT=4096
+NSIDE_DEFAULT=2048
 
 def match(ra1, dec1, radius1, ra2, dec2,
           nside=NSIDE_DEFAULT, maxmatch=1,
@@ -29,7 +29,7 @@ def match(ra1, dec1, radius1, ra2, dec2,
         declination array 2 same size as ra2 in degrees
 
     nside: int, optional
-        nside for the healpix layout. Default 512
+        nside for the healpix layout. Default 2048
 
     maxmatch: int, optional
         maximum number of matches to allow per point. The closest maxmatch
@@ -81,7 +81,7 @@ def match_self(ra, dec, radius,
         or same size as ra1/dec1.
 
     nside: int, optional
-        nside for the healpix layout. Default 512
+        nside for the healpix layout. Default 2048
 
     maxmatch: int, optional
         maximum number of matches to allow per point. The closest maxmatch
@@ -128,7 +128,7 @@ class Catalog(_smatch.Catalog):
     radius: array or scalar
         Search radius in degrees. Can be scalar or same size as ra/dec
     nside: int, optional
-        nside for the healpix layout. Default 512
+        nside for the healpix layout. Default 2048
     """
     def __init__(self, ra, dec, radius, nside=NSIDE_DEFAULT):
 
