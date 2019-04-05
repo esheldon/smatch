@@ -586,7 +586,9 @@ static int domatch(struct PySMatchCat* self,
     }
 
     // make sure final array has exactly the desired size
-    np_match_vector_realloc(&nv, nv.size);
+    if (nv.capacity > nv.size) {
+        np_match_vector_realloc(&nv, nv.size);
+    }
 
 _domatch_bail:
 
