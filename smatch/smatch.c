@@ -359,22 +359,15 @@ PySMatchCat_nmatches(struct PySMatchCat* self) {
 
 /*
 
-   Match the input ra,dec to the catalog. If no restriction is set on maximum
-   number of matches, then matches are simply appended.
+   Match the input catalog entry to the second set of points, the
+   hpix ids of which have been put into a tree. 
+   
+   If no restriction is set on maximum number of matches, then matches are
+   simply appended to the match vector in the catalog entry.
 
    If the number of matches is restricted (maxmatch > 0) then matches are
    appended up to the max allowed, then the match vector is converted to a heap
    and only matches closer than the farthest current match are added.
-
-   parameters
-
-   self: the catalog
-   ra, dec: the point to match from the second catalog
-   input_ind: the index in the second catalog
-   match_incr: this gets filled with the increase
-     in match count.  If a new match is found and
-     replaces an older farther match, the match
-     count is not incremented.
 
 */
 
@@ -922,7 +915,6 @@ static PyMethodDef PySMatchCat_methods[] = {
     {"get_hpix_area",              (PyCFunction)PySMatchCat_hpix_area,          METH_VARARGS,  "Get the nside for healpix."},
     {"match",              (PyCFunction)PySMatchCat_match,          METH_VARARGS,  "Match the catalog to the input ra,dec arrays."},
     {"match2file",              (PyCFunction)PySMatchCat_match2file,          METH_VARARGS,  "Match the catalog to the input ra,dec arrays and write results to a file."},
-    //{"_copy_matches",              (PyCFunction)PySMatchCat_copy_matches,          METH_VARARGS,  "Copy the matches into the input array."},
     {NULL}  /* Sentinel */
 };
 
