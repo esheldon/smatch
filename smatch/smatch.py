@@ -60,7 +60,7 @@ def match(ra1, dec1, radius1, ra2, dec2,
     if file is not None:
         return None
     else:
-        return cat.get_matches()
+        return cat.matches
 
 def match_self(ra, dec, radius,
                nside=NSIDE_DEFAULT, maxmatch=1,
@@ -112,7 +112,7 @@ def match_self(ra, dec, radius,
     if file is not None:
         return None
     else:
-        return cat.get_matches()
+        return cat.matches
 
 
 class Catalog(_smatch.Catalog):
