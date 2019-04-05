@@ -53,11 +53,14 @@ static inline void np_match_vector_realloc(np_match_vector* self, npy_intp newca
 static inline void np_match_vector_push(np_match_vector *self, Match* match)
 {
     Match *ptr=NULL;
+    npy_intp newcap=0;
+    double tmp=0;
+
     if (self->size == self->capacity) {
-        npy_intp newcap = self->capacity * 2;
-        if (newcap == 0) {
-            // old capacity was 0
-            newcap = 1;
+        tmp = ceil(self->capacity*1.5);
+        newcap = (npy_intp)tmp;
+        if (newcap < 2) {
+            newcap = 2;
         }
         np_match_vector_realloc(self, newcap);
     }
