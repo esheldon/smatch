@@ -1,6 +1,6 @@
 from __future__ import print_function
 from sys import stderr
-import numpy
+import numpy as np
 from . import _smatch
 
 # area 0.013114 square degrees
@@ -56,7 +56,7 @@ def match(ra1, dec1, radius1, ra2, dec2,
     # add early check  so we don't fail after building the
     # entire catalog, which could take a while
 
-    ra2,dec2 = _get_arrays(ra2,dec2)
+    #ra2,dec2 = _get_arrays(ra2,dec2)
 
 
     cat = Catalog(ra1, dec1, radius1, nside=nside)
@@ -141,12 +141,13 @@ class Catalog(_smatch.Catalog):
         ra,dec,radius=_get_arrays(ra,dec,radius=radius)
         self._matches = None
 
-        super(Catalog,self).__init__(
-            nside, ra, dec, radius,
-        )
-        self.ra=ra
-        self.dec=dec
-        self.radius=radius
+        #super(Catalog,self).__init__(
+        #    nside, ra, dec, radius,
+        #)
+        super(Catalog,self).__init__(nside)
+        self._ra=ra
+        self._dec=dec
+        self._radius=radius
 
     def get_matches(self):
         """
@@ -241,8 +242,8 @@ class Catalog(_smatch.Catalog):
         self._match(
             maxmatch,
             matching_self,
-            self.ra,
-            self.dec,
+            self._ra,
+            self._dec,
             file,
         )
 
@@ -275,41 +276,46 @@ class Catalog(_smatch.Catalog):
         We keep all the logic of choosing different methods here
         """
 
+        # make sure to store None here, since the matches are in a file
+        self._matches=None
+
         if file is not None:
             super(Catalog, self).match2file(
                 maxmatch,
                 matching_self,
+                self._ra,
+                self._dec,
+                self._radius,
                 ra,
                 dec,
                 file,
             )
 
-            # make sure to store None here, since the matches are in a file
-            self._matches=None
-
         else:
+            self._matches = np.zeros(1, dtype=match_dtype)
             super(Catalog, self).match(
                 maxmatch,
                 matching_self,
+                self._ra,
+                self._dec,
+                self._radius,
                 ra,
                 dec,
+                self._matches,
             )
 
             nmatches = self.get_nmatches()
-            matches  = numpy.zeros(nmatches, dtype=match_dtype)
-
-            if nmatches > 0:
-                super(Catalog,self)._copy_matches(matches)
-
-            self._matches=matches
+            assert self._matches.size == nmatches,\
+                ('match count does not match: '
+                 '%d in array, %d counted' % (self._matches.size, nmatches))
 
     def __repr__(self):
-        area=self.get_hpix_area()*(180.0/numpy.pi)**2
+        area=self.get_hpix_area()*(180.0/np.pi)**2
         lines=[
             'smatch catalog',
             '    nside:               %d' % self.get_hpix_nside(),
             '    pixel area (sq deg): %f' % area,
-            '    npoints:             %d' % self.ra.size,
+            '    npoints:             %d' % self._ra.size,
         ]
         return '\n'.join(lines)
 
@@ -329,7 +335,7 @@ def read_matches(filename):
 
     """
     nmatches = _smatch._count_lines(filename)
-    matches = numpy.zeros(nmatches, dtype=match_dtype)
+    matches = np.zeros(nmatches, dtype=match_dtype)
 
     if nmatches > 0:
         _smatch._load_matches(filename, matches)
@@ -338,8 +344,8 @@ def read_matches(filename):
 
 
 def _get_arrays(ra, dec, radius=None):
-    ra=numpy.array(ra, ndmin=1, dtype='f8', copy=False)
-    dec=numpy.array(dec, ndmin=1, dtype='f8', copy=False)
+    ra=np.array(ra, ndmin=1, dtype='f8', copy=False)
+    dec=np.array(dec, ndmin=1, dtype='f8', copy=False)
 
     if ra.size != dec.size:
         mess="ra/dec size mismatch: %d %d"
@@ -347,17 +353,12 @@ def _get_arrays(ra, dec, radius=None):
 
     if radius is not None:
 
-        tmprad=numpy.array(radius, ndmin=1, dtype='f8', copy=False)
+        radarr=np.array(radius, ndmin=1, dtype='f8', copy=False)
 
-        if tmprad.size == ra.size:
-            radarr=tmprad
-        elif tmprad.size == 1:
-            radarr=numpy.zeros(ra.size)
-            radarr[:] = tmprad[0]
-        else:
+        if radarr.size != ra.size and radarr.size != 1:
             mess=("radius has size %d but expected either "
-                  "a scalar of array of size %d")
-            raise ValueError(mess % (tmprad.size,ra.size))
+                  "a scalar/size 1 array or array of size %d")
+            raise ValueError(mess % (radarr.size,ra.size))
 
         return ra,dec,radarr
     else:
