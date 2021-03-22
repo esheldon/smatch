@@ -6,6 +6,5 @@ from .smatch import (
     read_matches,
     match_dtype,
 )
-from .test import test
 
 __version__ = '0.9.0.1'
