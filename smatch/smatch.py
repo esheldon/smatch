@@ -1,6 +1,6 @@
 from __future__ import print_function
 from sys import stderr
-import numpy
+import numpy as np
 from . import _smatch
 
 # area 0.013114 square degrees
@@ -29,7 +29,7 @@ def match(ra1, dec1, radius1, ra2, dec2,
         declination array 2 same size as ra2 in degrees
 
     nside: int, optional
-        nside for the healpix layout. Default 512
+        nside for the healpix layout. Default 2048
 
     maxmatch: int, optional
         maximum number of matches to allow per point. The closest maxmatch
@@ -45,19 +45,12 @@ def match(ra1, dec1, radius1, ra2, dec2,
         Structured array with fields
 
             i1: index in the primary Catalog
-            i2: index in the second set of points (sent as arguments
-                to match2file)
+            i2: index in the second set of points
             cos(dist): cosine of the angular distance
                 between the points
 
     If a file is sent, None is returned
     """
-
-    # add early check  so we don't fail after building the
-    # entire catalog, which could take a while
-
-    ra2,dec2 = _get_arrays(ra2,dec2)
-
 
     cat = Catalog(ra1, dec1, radius1, nside=nside)
 
@@ -66,7 +59,7 @@ def match(ra1, dec1, radius1, ra2, dec2,
     if file is not None:
         return None
     else:
-        return cat.get_matches()
+        return cat.matches
 
 def match_self(ra, dec, radius,
                nside=NSIDE_DEFAULT, maxmatch=1,
@@ -87,7 +80,7 @@ def match_self(ra, dec, radius,
         or same size as ra1/dec1.
 
     nside: int, optional
-        nside for the healpix layout. Default 512
+        nside for the healpix layout. Default 2048
 
     maxmatch: int, optional
         maximum number of matches to allow per point. The closest maxmatch
@@ -103,8 +96,7 @@ def match_self(ra, dec, radius,
         Structured array with fields
 
             i1: index in the primary Catalog
-            i2: index in the second set of points (sent as arguments
-                to match2file)
+            i2: index in the second set of points
             cos(dist): cosine of the angular distance
                 between the points
 
@@ -118,7 +110,7 @@ def match_self(ra, dec, radius,
     if file is not None:
         return None
     else:
-        return cat.get_matches()
+        return cat.matches
 
 
 class Catalog(_smatch.Catalog):
@@ -134,19 +126,20 @@ class Catalog(_smatch.Catalog):
     radius: array or scalar
         Search radius in degrees. Can be scalar or same size as ra/dec
     nside: int, optional
-        nside for the healpix layout. Default 512
+        nside for the healpix layout. Default 2048
     """
     def __init__(self, ra, dec, radius, nside=NSIDE_DEFAULT):
 
         ra,dec,radius=_get_arrays(ra,dec,radius=radius)
         self._matches = None
 
-        super(Catalog,self).__init__(
-            nside, ra, dec, radius,
-        )
-        self.ra=ra
-        self.dec=dec
-        self.radius=radius
+        #super(Catalog,self).__init__(
+        #    nside, ra, dec, radius,
+        #)
+        super(Catalog,self).__init__(nside)
+        self._ra=ra
+        self._dec=dec
+        self._radius=radius
 
     def get_matches(self):
         """
@@ -156,15 +149,14 @@ class Catalog(_smatch.Catalog):
         -------
         structure with the following structure
             i1: index in the primary Catalog
-            i2: index in the second set of points (sent to match or
-                match2file)
+            i2: index in the second set of points
             cos(dist): cosine of the angular distance
                 between the points
         """
         if self._matches is None:
             raise RuntimeError("no match structure found; either run "
                                "match() first or load results from a "
-                               "file if you ran match2file()")
+                               "file if you wrote matches")
 
         return self._matches
 
@@ -241,75 +233,56 @@ class Catalog(_smatch.Catalog):
         self._match(
             maxmatch,
             matching_self,
-            self.ra,
-            self.dec,
+            self._ra,
+            self._dec,
             file,
         )
-
-    def match2file(self, filename, ra, dec, maxmatch=1):
-        """
-        deprecated, use match(..., file=filename)
-
-        match the catalog to the second set of points, writing
-        results to a file
-
-
-        parameters
-        ----------
-        filename: string
-            File in which to write the matches
-        ra: array
-            ra to match, in degrees
-        dec: array
-            dec to match, in degrees
-        maxmatch: int, optional
-            maximum number of matches to allow per point. The closest maxmatch
-            matches will be kept.  Default is 1, which implles keepin the
-            closest match.  Set to <= 0 to keep all matches.
-        """
-
-        self.match(ra, dec, maxmatch=maxmatch, file=filename)
 
     def _match(self, maxmatch, matching_self, ra, dec, file):
         """
         We keep all the logic of choosing different methods here
         """
 
+        # make sure to store None here, since the matches are in a file
+        self._matches=None
+
         if file is not None:
             super(Catalog, self).match2file(
                 maxmatch,
                 matching_self,
+                self._ra,
+                self._dec,
+                self._radius,
                 ra,
                 dec,
                 file,
             )
 
-            # make sure to store None here, since the matches are in a file
-            self._matches=None
-
         else:
+            self._matches = np.zeros(1, dtype=match_dtype)
             super(Catalog, self).match(
                 maxmatch,
                 matching_self,
+                self._ra,
+                self._dec,
+                self._radius,
                 ra,
                 dec,
+                self._matches,
             )
 
             nmatches = self.get_nmatches()
-            matches  = numpy.zeros(nmatches, dtype=match_dtype)
-
-            if nmatches > 0:
-                super(Catalog,self)._copy_matches(matches)
-
-            self._matches=matches
+            assert self._matches.size == nmatches,\
+                ('match count does not match: '
+                 '%d in array, %d counted' % (self._matches.size, nmatches))
 
     def __repr__(self):
-        area=self.get_hpix_area()*(180.0/numpy.pi)**2
+        area=self.get_hpix_area()*(180.0/np.pi)**2
         lines=[
             'smatch catalog',
             '    nside:               %d' % self.get_hpix_nside(),
             '    pixel area (sq deg): %f' % area,
-            '    npoints:             %d' % self.ra.size,
+            '    npoints:             %d' % self._ra.size,
         ]
         return '\n'.join(lines)
 
@@ -322,14 +295,13 @@ def read_matches(filename):
     matches: structured array
         array with fields
             i1: index in the primary Catalog
-            i2: index in the second set of points (sent as arguments
-                to match2file)
+            i2: index in the second set of points
             cos(dist): cosine of the angular distance
                 between the points
 
     """
     nmatches = _smatch._count_lines(filename)
-    matches = numpy.zeros(nmatches, dtype=match_dtype)
+    matches = np.zeros(nmatches, dtype=match_dtype)
 
     if nmatches > 0:
         _smatch._load_matches(filename, matches)
@@ -338,8 +310,8 @@ def read_matches(filename):
 
 
 def _get_arrays(ra, dec, radius=None):
-    ra=numpy.array(ra, ndmin=1, dtype='f8', copy=False)
-    dec=numpy.array(dec, ndmin=1, dtype='f8', copy=False)
+    ra=np.array(ra, ndmin=1, dtype='f8', copy=False)
+    dec=np.array(dec, ndmin=1, dtype='f8', copy=False)
 
     if ra.size != dec.size:
         mess="ra/dec size mismatch: %d %d"
@@ -347,17 +319,12 @@ def _get_arrays(ra, dec, radius=None):
 
     if radius is not None:
 
-        tmprad=numpy.array(radius, ndmin=1, dtype='f8', copy=False)
+        radarr=np.array(radius, ndmin=1, dtype='f8', copy=False)
 
-        if tmprad.size == ra.size:
-            radarr=tmprad
-        elif tmprad.size == 1:
-            radarr=numpy.zeros(ra.size)
-            radarr[:] = tmprad[0]
-        else:
+        if radarr.size != ra.size and radarr.size != 1:
             mess=("radius has size %d but expected either "
-                  "a scalar of array of size %d")
-            raise ValueError(mess % (tmprad.size,ra.size))
+                  "a scalar/size 1 array or array of size %d")
+            raise ValueError(mess % (radarr.size,ra.size))
 
         return ra,dec,radarr
     else:

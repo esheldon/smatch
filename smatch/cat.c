@@ -3,6 +3,25 @@
 #include "vector.h"
 #include "cat.h"
 
+// for when we only want one entry
+CatalogEntry* cat_entry_new(void)
+{
+    CatalogEntry* self = calloc(1,sizeof(CatalogEntry));
+
+    if (self == NULL) {
+        fprintf(stderr,"Could not allocate CatalogEntry\n");
+        return NULL;
+    }
+
+
+    self->matches = match_vector_new();
+    self->disc_pixels = lvector_new();
+
+    return self;
+}
+
+
+/*
 Catalog* cat_new(size_t n)
 {
     size_t i=0;
@@ -34,10 +53,10 @@ void cat_free_data(Catalog* self)
 
     if (self) {
         for (i=0; i < self->size; i++) {
-            //vector_free(self->data[i].matches);
+            vector_free(self->data[i].matches);
             vector_free(self->data[i].disc_pixels);
         }
     }
 }
 
-
+*/

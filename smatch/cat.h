@@ -7,12 +7,32 @@
 
 typedef struct {
     CatPoint point;
-    // remove
+
+    // to hold matches
     match_vector *matches;
+
     // list of healpix ids that intersect the disc around
     // this point
     lvector* disc_pixels;
+
 } CatalogEntry;
+
+// create a catalog entry, including making
+// the match and pixels vectors
+
+CatalogEntry* cat_entry_new(void);
+
+#define cat_entry_free(entry) do {                                           \
+    if ((entry)) {                                                           \
+        vector_free(entry->disc_pixels);                                     \
+        vector_free(entry->matches);                                         \
+        free((entry));                                                       \
+        (entry)=NULL;                                                        \
+    }                                                                        \
+} while(0)
+
+
+/*
 
 typedef struct {
     size_t size;
@@ -30,5 +50,6 @@ void cat_free_data(Catalog *self);
         (cat)=NULL;                                                          \
     }                                                                        \
 } while(0)
+*/
 
 #endif

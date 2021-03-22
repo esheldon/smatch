@@ -127,7 +127,7 @@ class TestSMatch(unittest.TestCase):
                     skipTest("cannot test result if Catalog object creation fails")
 
                 for maxmatch, expected in zip(self.maxmatches,self.expected):
-                    cat.match2file(fname, self.ra2, self.dec2, maxmatch=maxmatch)
+                    cat.match(self.ra2, self.dec2, maxmatch=maxmatch, file=fname)
 
                     self.check_matches(cat.get_nmatches(),
                                        expected,
