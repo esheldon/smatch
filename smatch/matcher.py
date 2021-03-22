@@ -78,7 +78,7 @@ class Matcher(object):
         d, idx = self.tree.query(coords, k=k, p=2, distance_upper_bound=maxd, eps=eps)
 
         d /= 2
-        np.arcsin(d, out=d, msk=np.isfinite(d))
+        np.arcsin(d, out=d, where=np.isfinite(d))
         d = np.rad2deg(2*d)
 
         if return_indices:
