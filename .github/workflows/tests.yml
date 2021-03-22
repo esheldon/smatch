@@ -39,4 +39,4 @@ jobs:
       - name: test
         shell: bash -l {0}
         run: |
-          python -c "import smatch; smatch.test()"
+          python -c "import smatch; smatch.test.test()"
