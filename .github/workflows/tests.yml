@@ -31,6 +31,9 @@ jobs:
           conda config --set always_yes yes
           conda install --quiet --yes \
             numpy \
+            healpy \
+            scipy \
+            esutil \
             pip \
             setuptools \
             pytest
