@@ -32,11 +32,12 @@ jobs:
           conda install --quiet --yes \
             numpy \
             pip \
-            setuptools
+            setuptools \
+            pytest
 
           python -m pip install -e .
 
       - name: test
         shell: bash -l {0}
         run: |
-          python -c "import smatch; smatch.test()"
+          pytest -vvs smatch
