@@ -33,6 +33,19 @@ def test_matcher_knn(k):
             assert np.array_equal(idx[i], i)
 
 
+def test_matcher_knn_indices():
+    ra, dec = _gen_sphere_pts(50, 4543)
+    mch = Matcher(ra, dec)
+    idx, i1, i2, d = mch.query_knn(ra[:-10], dec[:-10], k=1, return_indices=True)
+
+    assert np.array_equal(i1, i2)
+
+    # test via brute force
+    for i in range(ra.shape[0]-10):
+        assert np.allclose(d[i], 0, atol=2e-6)
+        assert np.array_equal(idx[i], i)
+
+
 @pytest.mark.parametrize('k', [1, 2, 3])
 def test_matcher_knn_maxrad(k):
     ra, dec = _gen_sphere_pts(50, 4543)

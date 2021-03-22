@@ -25,7 +25,9 @@ class Matcher(object):
         coords = hp.rotator.dir2vec(lon, lat, lonlat=True).T
         self.tree = cKDTree(coords, compact_nodes=False, balanced_tree=False)
 
-    def query_knn(self, lon, lat, k=1, distance_upper_bound=None, return_indices=False):
+    def query_knn(
+        self, lon, lat, k=1, distance_upper_bound=None, eps=0, return_indices=False
+    ):
         """Find the `k` nearest neighbors of each point in (lon, lat) in
         the points held by the matcher.
 
@@ -40,6 +42,9 @@ class Matcher(object):
         distance_upper_bound : `float`, optional
             The maximum allowed distance in degrees for a nearest neighbor.
             Default of None results in no upper bound on the distance.
+        eps : `float`, optional
+            If non-zero, the set of returned points are correct to within a
+            fraction precision of `eps` being the actual knn
         return_indices : `bool`, optional
             Return tuple of (idx, i1, i2, d) instead of (d, idx).
             Only supported with k=1.
@@ -70,11 +75,10 @@ class Matcher(object):
             raise NotImplementedError("Indices are only returned for 1-1 matches")
 
         coords = hp.rotator.dir2vec(lon, lat, lonlat=True).T
-        d, idx = self.tree.query(coords, k=k, p=2, distance_upper_bound=maxd)
+        d, idx = self.tree.query(coords, k=k, p=2, distance_upper_bound=maxd, eps=eps)
 
-        with np.warnings.catch_warnings():
-            np.warnings.simplefilter("ignore")
-            np.arcsin(d/2, out=d)
+        d /= 2
+        np.arcsin(d, out=d, msk=np.isfinite(d))
         d = np.rad2deg(2*d)
 
         if return_indices:
