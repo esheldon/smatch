@@ -26,7 +26,8 @@ class Matcher(object):
         self.tree = cKDTree(coords, compact_nodes=False, balanced_tree=False)
 
     def query_knn(
-        self, lon, lat, k=1, distance_upper_bound=None, eps=0, return_indices=False
+        self, lon, lat, k=1, distance_upper_bound=None, eps=0,
+        return_indices=False, return_distances=False,
     ):
         """Find the `k` nearest neighbors of each point in (lon, lat) in
         the points held by the matcher.
@@ -46,15 +47,14 @@ class Matcher(object):
             If non-zero, the set of returned points are correct to within a
             fraction precision of `eps` being the actual knn
         return_indices : `bool`, optional
-            Return tuple of (idx, i1, i2, d) instead of (d, idx).
+            Return tuple of (idx, i1, i2, d) instead of idx.
             Only supported with k=1.
+        return_distances : `bool`, optional
+            If True, the array of distances is returned as the last return value.
+            Implied and thus ignored if `return_indices` is True.
 
         Returns
         -------
-        d : array-like, float
-            Array of distances in degrees.  Same shape as input array with
-            axis of dimension `k` added to the end.  If `k=1` then this
-            last dimension is squeezed out.
         idx : array-like, int
             Array of indices.  Same shape as input array with axis of
             dimension `k` added to the end.  If `k=1` then this last
@@ -65,6 +65,10 @@ class Matcher(object):
         i2 : array-like, int
             Array of indices for query lon/lat.
             Returned if return_indices is True.
+        d : array-like, float
+            Array of distances in degrees. Same shape as input array with axis
+            of dimension `k` added to the end. If `k=1`, then this last dimension
+            is squeezed out.
         """
         if distance_upper_bound is not None:
             maxd = 2*np.sin(np.deg2rad(distance_upper_bound)/2.)
@@ -77,16 +81,20 @@ class Matcher(object):
         coords = hp.rotator.dir2vec(lon, lat, lonlat=True).T
         d, idx = self.tree.query(coords, k=k, p=2, distance_upper_bound=maxd, eps=eps)
 
-        d /= 2
-        np.arcsin(d, out=d, where=np.isfinite(d))
-        d = np.rad2deg(2*d)
+        if return_distances:
+            d /= 2
+            np.arcsin(d, out=d, where=np.isfinite(d))
+            d = np.rad2deg(2*d)
 
         if return_indices:
             i2, = np.where(np.isfinite(d))
             i1 = idx[i2]
             return idx, i1, i2, d
         else:
-            return d, idx
+            if return_distances:
+                return idx, d
+            else:
+                return idx
 
     def query_radius(self, lon, lat, radius, eps=0.0, return_indices=False):
         """Find all points in (lon, lat) that are within `radius` of the

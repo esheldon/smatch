@@ -17,7 +17,7 @@ def _gen_sphere_pts(n, seed):
 def test_matcher_knn(k):
     ra, dec = _gen_sphere_pts(50, 4543)
     mch = Matcher(ra, dec)
-    d, idx = mch.query_knn(ra, dec, k=k)
+    idx, d = mch.query_knn(ra, dec, k=k, return_distances=True)
 
     # test via brute force
     idxs = np.arange(ra.shape[0])
@@ -50,7 +50,9 @@ def test_matcher_knn_indices():
 def test_matcher_knn_maxrad(k):
     ra, dec = _gen_sphere_pts(50, 4543)
     mch = Matcher(ra, dec)
-    d, idx = mch.query_knn(ra, dec, distance_upper_bound=5e4/3600, k=k)
+    idx, d = mch.query_knn(
+        ra, dec, distance_upper_bound=5e4/3600, k=k, return_distances=True
+    )
 
     # test via brute force
     idxs = np.arange(ra.shape[0])
@@ -73,7 +75,8 @@ def test_matcher_knn_maxrad_inf(k):
     ra, dec = _gen_sphere_pts(50, 4543)
     mch = Matcher(ra, dec)
     rap, decp = _gen_sphere_pts(50, 443)
-    d, idx = mch.query_knn(rap, decp, distance_upper_bound=1/3600, k=k)
+    idx, d = mch.query_knn(
+        rap, decp, distance_upper_bound=1/3600, k=k, return_distances=True)
     assert not np.any(np.isfinite(d))
     assert np.all(idx == 50)
 
