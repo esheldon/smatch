@@ -147,6 +147,6 @@ def test_sphdist():
     assert np.shape(d) == (1, 2)
     assert np.allclose(d, [[1, 1.5]], atol=1e-6)
 
-    d = sphdist([[10, 10], [10, 10]], [[20, 20], [20, 20]], [[10, 10]], [[21, 21.5]])
+    d = sphdist([[10, 10], [10, 10]], [[20, 20], [21, 21]], [[10, 10]], [[21, 21.5]])
     assert np.shape(d) == (2, 2)
-    assert np.allclose(d, [[1, 1.5], [1, 1.5]], atol=1e-6)
+    assert np.allclose(d, [[1, 1.5], [0, 0.5]], atol=1e-6)
