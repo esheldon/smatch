@@ -1,4 +1,4 @@
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 import numpy
 
 
@@ -12,8 +12,8 @@ ext = Extension(
 )
 setup(
     name="smatch",
-    packages=['smatch'],
-    version="v0.9.1",
+    packages=find_packages(),
+    version="0.9.1",
     ext_modules=[ext],
     include_dirs=numpy.get_include(),
 )

@@ -1,17 +1,12 @@
 from __future__ import print_function
-import sys, os
+import os
 import tempfile
 import unittest
 
 import numpy
 
+from ..smatch import Catalog, read_matches, match
 
-from . import smatch
-from .smatch import Catalog, read_matches, match
-
-def test():
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestSMatch)
-    unittest.TextTestRunner(verbosity=2).run(suite)
 
 class TestSMatch(unittest.TestCase):
     def setUp(self):
@@ -28,7 +23,7 @@ class TestSMatch(unittest.TestCase):
 
         self.two=two
 
-    
+
         self.maxmatches = [0,1,2]
         self.expected = [10,4,7]
 
@@ -36,7 +31,7 @@ class TestSMatch(unittest.TestCase):
 
     def testCreate(self):
         cat, ok = self.make_cat(self.two)
-        self.assertTrue(ok,"creating Catalog object") 
+        self.assertTrue(ok,"creating Catalog object")
 
         nside=cat.get_hpix_nside()
         self.assertEqual(nside, self.nside, "checking depth can be gotten")

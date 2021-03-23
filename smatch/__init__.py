@@ -1,3 +1,4 @@
+# flake8: noqa
 from . import smatch
 from .smatch import (
     match,
@@ -6,6 +7,5 @@ from .smatch import (
     read_matches,
     match_dtype,
 )
-from . import test
 
-__version__ = 'v0.9.1'
+__version__ = '0.9.1'
