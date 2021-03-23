@@ -45,6 +45,16 @@ def test_matcher_knn_indices():
         assert np.allclose(d[i], 0, atol=2e-6)
         assert np.array_equal(idx[i], i)
 
+    idx, i1, i2, d = mch.query_knn([10], [5], k=1, return_indices=True)
+    ds = esutil.coords.sphdist([10], [5], ra, dec)
+    tind = np.argmin(ds)
+    assert idx == [[tind]]
+    assert i1[0] == tind
+    assert i2[0] == 0
+    assert i1.shape == (1,)
+    assert i2.shape == (1,)
+    assert np.allclose(ds[tind], d[0])
+
 
 @pytest.mark.parametrize('k', [1, 2, 3])
 def test_matcher_knn_maxrad(k):
