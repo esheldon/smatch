@@ -5,31 +5,31 @@ from scipy.spatial import cKDTree
 import numpy as np
 
 
-def _radec2vec(ra, dec):
-    rar = np.deg2rad(ra)
-    decr = np.deg2rad(dec)
-    cosd = np.cos(decr)
+def _lonlat2vec(lon, lat):
+    lonr = np.deg2rad(lon)
+    latr = np.deg2rad(lat)
+    coslat = np.cos(latr)
     return np.stack([
-        np.atleast_1d(np.cos(rar) * cosd),
-        np.atleast_1d(np.sin(rar) * cosd),
-        np.atleast_1d(np.sin(decr)),
+        np.atleast_1d(np.cos(lonr) * coslat),
+        np.atleast_1d(np.sin(lonr) * coslat),
+        np.atleast_1d(np.sin(latr)),
     ], axis=-1)
 
 
-def sphdist(ra1, dec1, ra2, dec2):
+def sphdist(lon1, lat1, lon2, lat2):
     """Return the great circle arc distance between two sets of points.
 
-    Note that (ra1, dec1) and (ra2, dec2) must be broadcastable.
+    Note that (lon1, lat1) and (lon2, lat2) must be broadcastable.
 
     Parameters
     ----------
-    ra1 : float or array-like
+    lon1 : float or array-like
         The right ascension of the first set in degrees.
-    dec1 : float or array-like
+    lat1 : float or array-like
         The declination of the first set in degrees.
-    ra2 : float or array-like
+    lon2 : float or array-like
         The right ascension of the second set in degrees.
-    dec2 : float or array-like
+    lat2 : float or array-like
         The declination of the second set in degrees.
 
     Returns
@@ -37,32 +37,32 @@ def sphdist(ra1, dec1, ra2, dec2):
     d : float or array-like
         The great circle arc distance between the sets in degrees.
     """
-    if np.shape(ra1) != np.shape(dec1):
+    if np.shape(lon1) != np.shape(lat1):
         raise ValueError(
-            "ra1 and dec1 must be the same shape for sphdist: ra1=%s dec1=%s" % (
-                np.shape(ra1), np.shape(dec1)
+            "lon1 and lat1 must be the same shape for sphdist: lon1=%s lat1=%s" % (
+                np.shape(lon1), np.shape(lat1)
             )
         )
 
-    if np.shape(ra2) != np.shape(dec2):
+    if np.shape(lon2) != np.shape(lat2):
         raise ValueError(
-            "ra2 and dec2 must be the same shape for sphdist: ra2=%s dec2=%s" % (
-                np.shape(ra1), np.shape(dec1)
+            "lon2 and lat2 must be the same shape for sphdist: lon2=%s lat2=%s" % (
+                np.shape(lon1), np.shape(lat1)
             )
         )
 
     if (
-        np.shape(ra1) == tuple()
-        and np.shape(dec1) == tuple()
-        and np.shape(ra2) == tuple()
-        and np.shape(dec2) == tuple()
+        np.shape(lon1) == tuple()
+        and np.shape(lat1) == tuple()
+        and np.shape(lon2) == tuple()
+        and np.shape(lat2) == tuple()
     ):
         is_scalar = True
     else:
         is_scalar = False
 
-    vec1 = _radec2vec(ra1, dec1)
-    vec2 = _radec2vec(ra2, dec2)
+    vec1 = _lonlat2vec(lon1, lat1)
+    vec2 = _lonlat2vec(lon2, lat2)
 
     cosd = (
         vec1[..., 0] * vec2[..., 0]
@@ -95,7 +95,7 @@ class Matcher(object):
     def __init__(self, lon, lat):
         self.lon = lon
         self.lat = lat
-        coords = _radec2vec(lon, lat)
+        coords = _lonlat2vec(lon, lat)
         # The tree in the match does not need to be balanced, and
         # turning this off yields significantly faster runtime.
         self.tree = cKDTree(coords, compact_nodes=False, balanced_tree=False)
@@ -153,7 +153,7 @@ class Matcher(object):
         if k != 1 and return_indices:
             raise NotImplementedError("Indices are only returned for 1-1 matches")
 
-        coords = _radec2vec(lon, lat)
+        coords = _lonlat2vec(lon, lat)
         d, idx = self.tree.query(coords, k=k, p=2, distance_upper_bound=maxd, eps=eps)
 
         if return_distances or return_indices:
@@ -204,7 +204,7 @@ class Matcher(object):
             Array of distance (degrees) for each match pair.
             Returned if return_indices is True.
         """
-        coords = _radec2vec(lon, lat)
+        coords = _lonlat2vec(lon, lat)
         # The second tree in the match does not need to be balanced, and
         # turning this off yields significantly faster runtime.
         qtree = cKDTree(coords, compact_nodes=False, balanced_tree=False)
