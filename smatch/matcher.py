@@ -3,18 +3,81 @@ import operator
 
 from scipy.spatial import cKDTree
 import numpy as np
-import esutil.coords
 
 
 def _radec2vec(ra, dec):
     rar = np.deg2rad(ra)
     decr = np.deg2rad(dec)
     cosd = np.cos(decr)
-    return np.array([
-        np.cos(rar) * cosd,
-        np.sin(rar) * cosd,
-        np.sin(decr),
-    ]).T
+    return np.stack([
+        np.atleast_1d(np.cos(rar) * cosd),
+        np.atleast_1d(np.sin(rar) * cosd),
+        np.atleast_1d(np.sin(decr)),
+    ], axis=-1)
+
+
+def sphdist(ra1, dec1, ra2, dec2):
+    """Return the great circle arc distance between two sets of points.
+
+    Note that (ra1, dec1) and (ra2, dec2) must be broadcastable.
+
+    Parameters
+    ----------
+    ra1 : float or array-like
+        The right ascension of the first set in degrees.
+    dec1 : float or array-like
+        The declination of the first set in degrees.
+    ra2 : float or array-like
+        The right ascension of the second set in degrees.
+    dec2 : float or array-like
+        The declination of the second set in degrees.
+
+    Returns
+    -------
+    d : float or array-like
+        The great circle arc distance between the sets in degrees.
+    """
+    if np.shape(ra1) != np.shape(dec1):
+        raise ValueError(
+            "ra1 and dec1 must be the same shape for sphdist: ra1=%s dec1=%s" % (
+                np.shape(ra1), np.shape(dec1)
+            )
+        )
+
+    if np.shape(ra2) != np.shape(dec2):
+        raise ValueError(
+            "ra2 and dec2 must be the same shape for sphdist: ra2=%s dec2=%s" % (
+                np.shape(ra1), np.shape(dec1)
+            )
+        )
+
+    if (
+        np.shape(ra1) == tuple()
+        and np.shape(dec1) == tuple()
+        and np.shape(ra2) == tuple()
+        and np.shape(dec2) == tuple()
+    ):
+        is_scalar = True
+    else:
+        is_scalar = False
+
+    vec1 = _radec2vec(ra1, dec1)
+    vec2 = _radec2vec(ra2, dec2)
+
+    cosd = (
+        vec1[..., 0] * vec2[..., 0]
+        + vec1[..., 1] * vec2[..., 1]
+        + vec1[..., 2] * vec2[..., 2]
+    )
+
+    np.clip(cosd, -1, 1, out=cosd)
+
+    d = np.rad2deg(np.arccos(cosd))
+
+    if is_scalar:
+        return np.ravel(d)[0]
+    else:
+        return d
 
 
 class Matcher(object):
@@ -152,7 +215,7 @@ class Matcher(object):
             n_match_per_obj = np.array([len(row) for row in idx])
             i1 = np.repeat(np.arange(len(idx)), n_match_per_obj)
             i2 = np.array(functools.reduce(operator.iconcat, idx, []))
-            ds = esutil.coords.sphdist(
+            ds = sphdist(
                 self.lon[i1], self.lat[i1],
                 lon[i2], lat[i2],
             )
@@ -209,7 +272,7 @@ class Matcher(object):
             i1 = np.repeat(first_match_per_obj, n_match_per_obj)
             i2 = np.array(functools.reduce(operator.iconcat, idx2, []))
             # The distance is arbitrary here.
-            ds = esutil.coords.sphdist(
+            ds = sphdist(
                 self.lon[i1], self.lat[i1],
                 self.lon[i2], self.lat[i2],
             )

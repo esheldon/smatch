@@ -32,7 +32,6 @@ jobs:
           conda install --quiet --yes \
             numpy \
             scipy \
-            esutil \
             pip \
             setuptools \
             pytest

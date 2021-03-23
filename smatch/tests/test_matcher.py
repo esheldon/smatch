@@ -1,9 +1,8 @@
 import numpy as np
-import esutil.coords
 
 import pytest
 
-from ..matcher import Matcher
+from ..matcher import Matcher, sphdist
 
 
 def _gen_sphere_pts(n, seed):
@@ -22,7 +21,7 @@ def test_matcher_knn(k):
     # test via brute force
     idxs = np.arange(ra.shape[0])
     for i in range(ra.shape[0]):
-        ds = esutil.coords.sphdist(ra[i], dec[i], ra, dec)
+        ds = sphdist(ra[i], dec[i], ra, dec)
         inds = np.argsort(ds)
 
         if k != 1:
@@ -46,7 +45,7 @@ def test_matcher_knn_indices():
         assert np.array_equal(idx[i], i)
 
     idx, i1, i2, d = mch.query_knn([10], [5], k=1, return_indices=True)
-    ds = esutil.coords.sphdist([10], [5], ra, dec)
+    ds = sphdist([10], [5], ra, dec)
     tind = np.argmin(ds)
     assert idx == [[tind]]
     assert i1[0] == tind
@@ -67,7 +66,7 @@ def test_matcher_knn_maxrad(k):
     # test via brute force
     idxs = np.arange(ra.shape[0])
     for i in range(ra.shape[0]):
-        ds = esutil.coords.sphdist(ra[i], dec[i], ra, dec)
+        ds = sphdist(ra[i], dec[i], ra, dec)
         inds = np.argsort(ds)
         msk = (ds[inds] < 5e4/3600) & (np.arange(ra.shape[0]) < k)
         s = np.sum(msk)
@@ -101,7 +100,53 @@ def test_matcher_radius():
     for ic in range(ra.shape[0]):
         idxc = []
         for ip in range(rap.shape[0]):
-            sep = esutil.coords.sphdist(ra[ic], dec[ic], rap[ip], decp[ip])
+            sep = sphdist(ra[ic], dec[ic], rap[ip], decp[ip])
             if sep < 6e4/3600:
                 idxc.append(ip)
         assert set(idxc) == set(idx[ic])
+
+
+def test_sphdist():
+    d = sphdist(10, 20, 10, 21)
+    assert np.shape(d) == tuple()
+    assert np.allclose(d, 1, atol=1e-6)
+
+    d = sphdist(10, 20, [10, 10], [21, 21.5])
+    assert np.shape(d) == (2,)
+    assert np.allclose(d, [1, 1.5], atol=1e-6)
+
+    d = sphdist(10, 0, [10, 11], [0, 0])
+    assert np.shape(d) == (2,)
+    assert np.allclose(d, [0, 1], atol=1e-6)
+
+    d = sphdist([10, 10], [0, 0], [10, 11], [0, 0])
+    assert np.shape(d) == (2,)
+    assert np.allclose(d, [0, 1], atol=1e-6)
+
+    with pytest.raises(ValueError):
+        sphdist([10], [0, 0], [10, 11], [0, 0])
+
+    with pytest.raises(ValueError):
+        sphdist(10, [0, 0], [10, 11], [0, 0])
+
+    with pytest.raises(ValueError):
+        sphdist([10, 10], [0, 0], [10, 11], 0)
+
+    with pytest.raises(ValueError):
+        sphdist([10, 10], [0, 0], [10, 11], [0])
+
+    d = sphdist(10, 20, [[10, 10]], [[21, 21.5]])
+    assert np.shape(d) == (1, 2)
+    assert np.allclose(d, [[1, 1.5]], atol=1e-6)
+
+    d = sphdist([10], [20], [[10, 10]], [[21, 21.5]])
+    assert np.shape(d) == (1, 2)
+    assert np.allclose(d, [[1, 1.5]], atol=1e-6)
+
+    d = sphdist([[10, 10]], [[20, 20]], [[10, 10]], [[21, 21.5]])
+    assert np.shape(d) == (1, 2)
+    assert np.allclose(d, [[1, 1.5]], atol=1e-6)
+
+    d = sphdist([[10, 10], [10, 10]], [[20, 20], [20, 20]], [[10, 10]], [[21, 21.5]])
+    assert np.shape(d) == (2, 2)
+    assert np.allclose(d, [[1, 1.5], [1, 1.5]], atol=1e-6)
