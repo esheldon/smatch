@@ -2,9 +2,19 @@ import functools
 import operator
 
 from scipy.spatial import cKDTree
-import healpy as hp
 import numpy as np
 import esutil.coords
+
+
+def _radec2vec(ra, dec):
+    rar = np.deg2rad(ra)
+    decr = np.deg2rad(dec)
+    cosd = np.cos(decr)
+    return np.array([
+        np.cos(rar) * cosd,
+        np.sin(rar) * cosd,
+        np.sin(decr),
+    ]).T
 
 
 class Matcher(object):
@@ -22,7 +32,7 @@ class Matcher(object):
     def __init__(self, lon, lat):
         self.lon = lon
         self.lat = lat
-        coords = hp.rotator.dir2vec(lon, lat, lonlat=True).T
+        coords = _radec2vec(lon, lat)
         self.tree = cKDTree(coords, compact_nodes=False, balanced_tree=False)
 
     def query_knn(
@@ -78,7 +88,7 @@ class Matcher(object):
         if k != 1 and return_indices:
             raise NotImplementedError("Indices are only returned for 1-1 matches")
 
-        coords = hp.rotator.dir2vec(lon, lat, lonlat=True).T
+        coords = _radec2vec(lon, lat)
         d, idx = self.tree.query(coords, k=k, p=2, distance_upper_bound=maxd, eps=eps)
 
         if return_distances:
@@ -129,7 +139,7 @@ class Matcher(object):
             Array of distance (degrees) for each match pair.
             Returned if return_indices is True.
         """
-        coords = hp.rotator.dir2vec(lon, lat, lonlat=True).T
+        coords = _radec2vec(lon, lat)
         # The second tree in the match does not need to be balanced, and
         # turning this off yields significantly faster runtime.
         qtree = cKDTree(coords, compact_nodes=False, balanced_tree=False)
