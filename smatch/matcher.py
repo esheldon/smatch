@@ -20,7 +20,7 @@ def _radec2vec(ra, dec):
 class Matcher(object):
     """A class to match catalogs with cKDTree.
 
-    A collaboration of Alex Drlica-Wagner, Matthew Becker, Eli Rykoff.
+    A collaboration of Alex Drlica-Wagner, Matthew Becker, & Eli Rykoff.
 
     Parameters
     ----------
@@ -33,6 +33,8 @@ class Matcher(object):
         self.lon = lon
         self.lat = lat
         coords = _radec2vec(lon, lat)
+        # The tree in the match does not need to be balanced, and
+        # turning this off yields significantly faster runtime.
         self.tree = cKDTree(coords, compact_nodes=False, balanced_tree=False)
 
     def query_knn(
@@ -91,7 +93,7 @@ class Matcher(object):
         coords = _radec2vec(lon, lat)
         d, idx = self.tree.query(coords, k=k, p=2, distance_upper_bound=maxd, eps=eps)
 
-        if return_distances:
+        if return_distances or return_indices:
             d /= 2
             np.arcsin(d, out=d, where=np.isfinite(d))
             d = np.rad2deg(2*d)
