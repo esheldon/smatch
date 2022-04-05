@@ -133,20 +133,6 @@ def test_matcher_radius_indices():
     assert np.max(dist_match) < 0.2
 
 
-def test_matcher_radius_indices():
-    ra, dec = _gen_sphere_pts(50, 4543)
-    mch = Matcher(ra, dec)
-
-    rap = ra[::-1] + 0.1
-    decp = dec[::-1] + 0.1
-
-    idx, i1, i2, d = mch.query_radius(rap, decp, 0.2, return_indices=True)
-
-    assert np.max(d) < 0.2
-    dist_match = sphdist(ra[i1], dec[i1], rap[i2], decp[i2])
-    assert np.max(dist_match) < 0.2
-
-
 def test_match_radius_nomatch():
     ra = np.arange(10, dtype=np.float64)
     dec = np.arange(10, dtype=np.float64)
