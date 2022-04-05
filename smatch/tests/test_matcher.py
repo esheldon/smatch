@@ -171,6 +171,7 @@ def test_match_radius_indices_nomatch():
     assert len(idx[0]) == 0
     assert len(i1) == 0
     assert len(i2) == 0
+    assert len(d) == 0
 
 
 def test_sphdist():
