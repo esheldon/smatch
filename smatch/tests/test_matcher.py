@@ -25,7 +25,7 @@ def test_matcher_knn(k):
         inds = np.argsort(ds)
 
         if k != 1:
-            assert np.allclose(d[i, :], ds[inds[:k]], atol=2e-6)
+            assert np.allclose(d[i, :], ds[inds[:k]], atol=3e-6)
             assert np.array_equal(idx[i, :], idxs[inds[:k]])
         else:
             assert np.allclose(d[i], 0, atol=2e-6)
@@ -72,7 +72,7 @@ def test_matcher_knn_maxrad(k):
         s = np.sum(msk)
 
         if k != 1:
-            assert np.allclose(d[i, :s], ds[inds[msk]], atol=2e-6)
+            assert np.allclose(d[i, :s], ds[inds[msk]], atol=3e-6)
             assert np.array_equal(idx[i, :s], idxs[inds[msk]])
         else:
             assert np.allclose(d[i], 0, atol=2e-6)
@@ -149,4 +149,4 @@ def test_sphdist():
 
     d = sphdist([[10, 10], [10, 10]], [[20, 20], [21, 21]], [[10, 10]], [[21, 21.5]])
     assert np.shape(d) == (2, 2)
-    assert np.allclose(d, [[1, 1.5], [0, 0.5]], atol=1e-6)
+    assert np.allclose(d, [[1, 1.5], [0, 0.5]], atol=2e-6)
