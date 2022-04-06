@@ -215,10 +215,13 @@ class Matcher(object):
             n_match_per_obj = np.array([len(row) for row in idx])
             i1 = np.repeat(np.arange(len(idx)), n_match_per_obj)
             i2 = np.array(functools.reduce(operator.iconcat, idx, []))
-            ds = sphdist(
-                self.lon[i1], self.lat[i1],
-                lon[i2], lat[i2],
-            )
+            if len(i1) > 0:
+                ds = sphdist(
+                    self.lon[i1], self.lat[i1],
+                    lon[i2], lat[i2],
+                )
+            else:
+                ds = np.zeros(0)
             return idx, i1, i2, ds
         else:
             return idx

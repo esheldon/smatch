@@ -7,5 +7,9 @@ from .smatch import (
     read_matches,
     match_dtype,
 )
+from .matcher import (
+    Matcher,
+    sphdist,
+)
 
-__version__ = '0.9.1'
+__version__ = '0.9.2'

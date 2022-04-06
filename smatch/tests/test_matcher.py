@@ -25,7 +25,7 @@ def test_matcher_knn(k):
         inds = np.argsort(ds)
 
         if k != 1:
-            assert np.allclose(d[i, :], ds[inds[:k]], atol=2e-6)
+            assert np.allclose(d[i, :], ds[inds[:k]], atol=3e-6)
             assert np.array_equal(idx[i, :], idxs[inds[:k]])
         else:
             assert np.allclose(d[i], 0, atol=2e-6)
@@ -55,6 +55,19 @@ def test_matcher_knn_indices():
     assert np.allclose(ds[tind], d[0])
 
 
+def test_matcher_knn_indices_nomatch():
+    ra = np.arange(10, dtype=np.float64)
+    dec = np.arange(10, dtype=np.float64)
+
+    mch = Matcher([30.0], [30.0])
+
+    idx, i1, i2, d = mch.query_knn(ra, dec, k=1, distance_upper_bound=1.0, return_indices=True)
+
+    assert len(i1) == 0
+    assert len(i2) == 0
+    assert np.all(~np.isfinite(d))
+
+
 @pytest.mark.parametrize('k', [1, 2, 3])
 def test_matcher_knn_maxrad(k):
     ra, dec = _gen_sphere_pts(50, 4543)
@@ -72,7 +85,7 @@ def test_matcher_knn_maxrad(k):
         s = np.sum(msk)
 
         if k != 1:
-            assert np.allclose(d[i, :s], ds[inds[msk]], atol=2e-6)
+            assert np.allclose(d[i, :s], ds[inds[msk]], atol=3e-6)
             assert np.array_equal(idx[i, :s], idxs[inds[msk]])
         else:
             assert np.allclose(d[i], 0, atol=2e-6)
@@ -104,6 +117,47 @@ def test_matcher_radius():
             if sep < 6e4/3600:
                 idxc.append(ip)
         assert set(idxc) == set(idx[ic])
+
+
+def test_matcher_radius_indices():
+    ra, dec = _gen_sphere_pts(50, 4543)
+    mch = Matcher(ra, dec)
+
+    rap = ra[::-1] + 0.1
+    decp = dec[::-1] + 0.1
+
+    idx, i1, i2, d = mch.query_radius(rap, decp, 0.2, return_indices=True)
+
+    assert np.max(d) < 0.2
+    dist_match = sphdist(ra[i1], dec[i1], rap[i2], decp[i2])
+    assert np.max(dist_match) < 0.2
+
+
+def test_match_radius_nomatch():
+    ra = np.arange(10, dtype=np.float64)
+    dec = np.arange(10, dtype=np.float64)
+
+    mch = Matcher([30.0], [30.0])
+
+    idx = mch.query_radius(ra, dec, 0.2)
+
+    assert len(idx) == 1
+    assert len(idx[0]) == 0
+
+
+def test_match_radius_indices_nomatch():
+    ra = np.arange(10, dtype=np.float64)
+    dec = np.arange(10, dtype=np.float64)
+
+    mch = Matcher([30.0], [30.0])
+
+    idx, i1, i2, d = mch.query_radius(ra, dec, 0.2, return_indices=True)
+
+    assert len(idx) == 1
+    assert len(idx[0]) == 0
+    assert len(i1) == 0
+    assert len(i2) == 0
+    assert len(d) == 0
 
 
 def test_sphdist():
@@ -149,4 +203,4 @@ def test_sphdist():
 
     d = sphdist([[10, 10], [10, 10]], [[20, 20], [21, 21]], [[10, 10]], [[21, 21.5]])
     assert np.shape(d) == (2, 2)
-    assert np.allclose(d, [[1, 1.5], [0, 0.5]], atol=1e-6)
+    assert np.allclose(d, [[1, 1.5], [0, 0.5]], atol=2e-6)
