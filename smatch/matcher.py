@@ -260,28 +260,20 @@ class Matcher(object):
         """
         angle = 2.0*np.sin(np.deg2rad(radius)/2.0)
         idx = self.tree.query_ball_tree(self.tree, angle, eps=eps)
-        # The matching works best when sorting with the most matches first
-        len_arr = np.array([len(j) for j in idx])
-        st = np.argsort(len_arr)[:: -1]
-        match_id = np.full(len(idx), -1, dtype=np.int32)
-        idx2 = []
-        for j in st:
-            if match_id[j] < 0 and len_arr[j] >= min_match:
-                match_id[idx[j]] = j
-                idx2.append(idx[j])
         if return_indices:
-            n_match_per_obj = np.array([len(row) for row in idx2])
-            first_match_per_obj = np.array([row[0] for row in idx2])
-            i1 = np.repeat(first_match_per_obj, n_match_per_obj)
-            i2 = np.array(functools.reduce(operator.iconcat, idx2, []))
-            # The distance is arbitrary here.
-            ds = sphdist(
-                self.lon[i1], self.lat[i1],
-                self.lon[i2], self.lat[i2],
-            )
-            return idx2, i1, i2, ds
+            n_match_per_obj = np.array([len(row) for row in idx])
+            i1 = np.repeat(np.arange(len(idx)), n_match_per_obj)
+            i2 = np.array(functools.reduce(operator.iconcat, idx, []))
+            if len(i1) > 0:
+                ds = sphdist(
+                    self.lon[i1], self.lat[i1],
+                    self.lon[i2], self.lat[i2],
+                )
+            else:
+                ds = np.zeros(0)
+            return idx, i1, i2, ds
         else:
-            return idx2
+            return idx
 
     def __enter__(self):
         return self
