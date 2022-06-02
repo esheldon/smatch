@@ -258,4 +258,4 @@ def test_match_self_radius_indices_onlyself():
     assert len(d) == 1
     assert i1[0] == 0
     assert i2[0] == 0
-    assert np.allclose(d, 0)
+    assert np.allclose(d, 0, atol=1e-6)
