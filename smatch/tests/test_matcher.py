@@ -284,18 +284,18 @@ def test_match_self_radius_indices_onlyself():
 def test_matcher_context():
     ra, dec = _gen_sphere_pts(50, 4543)
     mch = Matcher(ra, dec)
-    assert not hasattr(mch, "tree")
+    assert not hasattr(mch, "_tree")
     rap, decp = _gen_sphere_pts(100, 454)
     mch.query_radius(rap, decp, 6e4/3600)
-    assert hasattr(mch, "tree")
+    assert hasattr(mch, "_tree")
 
     with Matcher(ra, dec) as mch:
         rap, decp = _gen_sphere_pts(100, 454)
         mch.query_radius(rap, decp, 6e4/3600)
-        assert hasattr(mch, "tree")
+        assert hasattr(mch, "_tree")
 
-    assert not hasattr(mch, "tree")
+    assert not hasattr(mch, "_tree")
 
     rap, decp = _gen_sphere_pts(100, 454)
     mch.query_radius(rap, decp, 6e4/3600)
-    assert hasattr(mch, "tree")
+    assert hasattr(mch, "_tree")
