@@ -95,10 +95,13 @@ class Matcher(object):
     def __init__(self, lon, lat):
         self.lon = np.atleast_1d(lon)
         self.lat = np.atleast_1d(lat)
-        coords = _lonlat2vec(lon, lat)
-        # The tree in the match does not need to be balanced, and
-        # turning this off yields significantly faster runtime.
-        self.tree = cKDTree(coords, compact_nodes=False, balanced_tree=False)
+
+    def _ensure_has_tree(self):
+        if not hasattr(self, "tree"):
+            coords = _lonlat2vec(self.lon, self.lat)
+            # The tree in the match does not need to be balanced, and
+            # turning this off yields significantly faster runtime.
+            self.tree = cKDTree(coords, compact_nodes=False, balanced_tree=False)
 
     def query_knn(
         self, lon, lat, k=1, distance_upper_bound=None, eps=0,
@@ -145,6 +148,8 @@ class Matcher(object):
             of dimension `k` added to the end. If `k=1`, then this last dimension
             is squeezed out.
         """
+        self._ensure_has_tree()
+
         if distance_upper_bound is not None:
             maxd = 2*np.sin(np.deg2rad(distance_upper_bound)/2.)
         else:
@@ -204,6 +209,8 @@ class Matcher(object):
             Array of distance (degrees) for each match pair.
             Returned if return_indices is True.
         """
+        self._ensure_has_tree()
+
         coords = _lonlat2vec(lon, lat)
         # The second tree in the match does not need to be balanced, and
         # turning this off yields significantly faster runtime.
@@ -258,6 +265,8 @@ class Matcher(object):
             Array of distance (degrees) for each match pair.
             Returned if return_indices is True.
         """
+        self._ensure_has_tree()
+
         angle = 2.0*np.sin(np.deg2rad(radius)/2.0)
         idx = self.tree.query_ball_tree(self.tree, angle, eps=eps)
 
@@ -282,8 +291,9 @@ class Matcher(object):
             return idx
 
     def __enter__(self):
+        self._ensure_has_tree()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         # Clear the memory from the tree
-        del self.tree
+        delattr(self, "tree")

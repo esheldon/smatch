@@ -279,3 +279,23 @@ def test_match_self_radius_indices_onlyself():
     assert i1[0] == 0
     assert i2[0] == 0
     assert np.allclose(d, 0, atol=2e-6)
+
+
+def test_matcher_context():
+    ra, dec = _gen_sphere_pts(50, 4543)
+    mch = Matcher(ra, dec)
+    assert not hasattr(mch, "tree")
+    rap, decp = _gen_sphere_pts(100, 454)
+    mch.query_radius(rap, decp, 6e4/3600)
+    assert hasattr(mch, "tree")
+
+    with Matcher(ra, dec) as mch:
+        rap, decp = _gen_sphere_pts(100, 454)
+        mch.query_radius(rap, decp, 6e4/3600)
+        assert hasattr(mch, "tree")
+
+    assert not hasattr(mch, "tree")
+
+    rap, decp = _gen_sphere_pts(100, 454)
+    mch.query_radius(rap, decp, 6e4/3600)
+    assert hasattr(mch, "tree")
