@@ -226,17 +226,13 @@ class Matcher(object):
         else:
             return idx
 
-    def query_self(self, radius, min_match=1, eps=0.0, return_indices=False):
+    def query_self(self, radius, eps=0.0, return_indices=False):
         """Match the list of lon/lat to itself.
 
         Parameters
         ----------
         radius : `float`
             The match radius in degrees.
-        min_match : `int`, optional
-            Minimum number of matches to count as a match.
-            If min_match=1 then all positions will be returned since every
-            position will match at least to itself.
         eps : `float`, optional
             If non-zero, the set of returned points are correct to within a
             fraction precision of `eps` being closer than `radius`.
