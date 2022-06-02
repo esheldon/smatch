@@ -213,6 +213,7 @@ def test_matcher_self_radius():
     mch = Matcher(ra, dec)
 
     idx = mch.query_self(6e4/3600)
+    assert any(len(_idx) > 1 for _idx in idx)
 
     for ic in range(ra.shape[0]):
         idxc = []
@@ -221,6 +222,25 @@ def test_matcher_self_radius():
             if sep < 6e4/3600:
                 idxc.append(ip)
         assert set(idxc) == set(idx[ic])
+
+
+def test_matcher_self_radius_minmatch():
+    ra, dec = _gen_sphere_pts(50, 4543)
+    mch = Matcher(ra, dec)
+
+    idx = mch.query_self(2e5/3600, min_match=3)
+    assert all(len(_idx) > 2 for _idx in idx)
+
+    for ic in range(ra.shape[0]):
+        idxc = []
+        for ip in range(ra.shape[0]):
+            sep = sphdist(ra[ic], dec[ic], ra[ip], dec[ip])
+            if sep < 2e5/3600:
+                idxc.append(ip)
+        if len(idxc) > 2:
+            assert set(idxc) == set(idx[ic])
+        else:
+            assert set(idx[ic]) == set()
 
 
 def test_matcher_self_radius_indices():

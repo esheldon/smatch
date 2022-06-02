@@ -226,13 +226,17 @@ class Matcher(object):
         else:
             return idx
 
-    def query_self(self, radius, eps=0.0, return_indices=False):
+    def query_self(self, radius, min_match=1, eps=0.0, return_indices=False):
         """Match the list of lon/lat to itself.
 
         Parameters
         ----------
         radius : `float`
             The match radius in degrees.
+        min_match : `int`, optional
+            Minimum number of matches to count as a match.
+            If min_match=1 then all positions will be returned since every
+            position will match at least to itself.
         eps : `float`, optional
             If non-zero, the set of returned points are correct to within a
             fraction precision of `eps` being closer than `radius`.
@@ -256,6 +260,12 @@ class Matcher(object):
         """
         angle = 2.0*np.sin(np.deg2rad(radius)/2.0)
         idx = self.tree.query_ball_tree(self.tree, angle, eps=eps)
+
+        if min_match > 1:
+            for i in range(len(idx)):
+                if len(idx[i]) < min_match:
+                    idx[i] = []
+
         if return_indices:
             n_match_per_obj = np.array([len(row) for row in idx])
             i1 = np.repeat(np.arange(len(idx)), n_match_per_obj)
