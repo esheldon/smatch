@@ -242,7 +242,7 @@ def test_match_self_radius_onlyself():
 
     assert len(idx) == 1
     assert len(idx[0]) == 1
-    assert idx[0][0] == [0]
+    assert idx[0][0] == 0
 
 
 def test_match_self_radius_indices_onlyself():
@@ -252,7 +252,7 @@ def test_match_self_radius_indices_onlyself():
 
     assert len(idx) == 1
     assert len(idx[0]) == 1
-    assert idx[0][0] == [0]
+    assert idx[0][0] == 0
     assert len(i1) == 1
     assert len(i2) == 1
     assert len(d) == 1

@@ -93,8 +93,8 @@ class Matcher(object):
         The latitude in degrees.
     """
     def __init__(self, lon, lat):
-        self.lon = lon
-        self.lat = lat
+        self.lon = np.atleast_1d(lon)
+        self.lat = np.atleast_1d(lat)
         coords = _lonlat2vec(lon, lat)
         # The tree in the match does not need to be balanced, and
         # turning this off yields significantly faster runtime.
