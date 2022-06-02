@@ -227,7 +227,7 @@ def test_matcher_self_radius_indices():
     ra, dec = _gen_sphere_pts(50, 4543)
     mch = Matcher(ra, dec)
 
-    idx, i1, i2, d = mch.query_radius(0.2, return_indices=True)
+    idx, i1, i2, d = mch.query_self(0.2, return_indices=True)
 
     assert np.max(d) < 0.2
     dist_match = sphdist(ra[i1], dec[i1], ra[i2], dec[i2])
@@ -238,7 +238,7 @@ def test_matcher_self_radius_indices():
 def test_match_self_radius_onlyself():
     mch = Matcher([30.0], [30.0])
 
-    idx = mch.query_radius(0.2)
+    idx = mch.query_self(0.2)
 
     assert len(idx) == 1
     assert len(idx[0]) == 1
@@ -248,7 +248,7 @@ def test_match_self_radius_onlyself():
 def test_match_self_radius_indices_onlyself():
     mch = Matcher([30.0], [30.0])
 
-    idx, i1, i2, d = mch.query_radius(0.2, return_indices=True)
+    idx, i1, i2, d = mch.query_self(0.2, return_indices=True)
 
     assert len(idx) == 1
     assert len(idx[0]) == 1
