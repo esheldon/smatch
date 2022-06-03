@@ -299,3 +299,52 @@ def test_matcher_context():
     rap, decp = _gen_sphere_pts(100, 454)
     mch.query_radius(rap, decp, 6e4/3600)
     assert hasattr(mch, "_tree")
+
+
+def test_match_group_radius():
+    ra, dec = _gen_sphere_pts(50, 4543)
+    mch = Matcher(ra, dec)
+
+    idx = mch.query_groups(6e4/3600)
+    assert all(len(group) >= 1 for group in idx)
+
+    # All points should be in one and only one group.
+    all_idx = np.concatenate(idx)
+    assert len(all_idx) == len(ra)
+    assert len(np.unique(all_idx)) == len(all_idx)
+
+    # Every point needs to be linked to at least one other point
+    # in the group by less than the radius.
+    for group in idx:
+        for ip in group:
+            sep = sphdist(ra[ip], dec[ip], ra[group], dec[group])
+            assert np.min(sep) < 6e4/3600.
+
+
+def test_match_group_radius_minmatch():
+    ra, dec = _gen_sphere_pts(50, 4543)
+    mch = Matcher(ra, dec)
+
+    idx = mch.query_groups(6e4/3600, min_match=2)
+    assert all(len(group) >= 2 for group in idx)
+
+    all_idx = np.concatenate(idx)
+    assert len(all_idx) < len(ra)
+    assert len(np.unique(all_idx)) == len(all_idx)
+
+    # Every point needs to be linked to at least one other point
+    # in the group by less than the radius.
+    for group in idx:
+        for ip in group:
+            sep = sphdist(ra[ip], dec[ip], ra[group], dec[group])
+            assert np.min(sep) < 6e4/3600.
+
+
+def test_match_group_radius_onlyself():
+    mch = Matcher([30.0], [30.0])
+
+    idx = mch.query_groups(0.2)
+
+    assert len(idx) == 1
+    assert len(idx[0]) == 1
+    assert idx[0][0] == 0
