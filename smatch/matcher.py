@@ -286,6 +286,43 @@ class Matcher(object):
         else:
             return idx
 
+    def query_groups(self, radius, min_match=1, eps=0.0, return_indices=False):
+        """Match the list of lon/lat to itself, and return groups.
+
+        The return from this method are deduplicated friends-of-friends (FOF)
+        groups.
+
+        Parameters
+        ----------
+        radius : `float`
+            The match radius in degrees.
+        min_match : `int`, optional
+            Minimum number of matches to count as a match.
+            If min_match=1 then all positions will be returned since every
+            position will match at least to itself.
+        eps : `float`, optional
+            If non-zero, the set of returned points are correct to within a
+            fraction precision of `eps` being closer than `radius`.
+
+        Returns
+        -------
+        idx : `list` [`list` [`int`]]
+            Each row in idx corresponds to a unique (deduplicated) FOF group.
+            The indices in the row correspond to the indices in matcher lon/lat.
+        """
+        angle = 2.0*np.sin(np.deg2rad(radius)/2.0)
+        idx = self.tree.query_ball_tree(self.tree, angle, eps=eps)
+        # The matching works best when sorting with the most matches first
+        len_arr = np.array([len(j) for j in idx])
+        st = np.argsort(len_arr)[:: -1]
+        match_id = np.full(len(idx), -1, dtype=np.int32)
+        idx2 = []
+        for j in st:
+            if match_id[j] < 0 and len_arr[j] >= min_match:
+                match_id[idx[j]] = j
+                idx2.append(idx[j])
+        return idx2
+
     def __enter__(self):
         return self
 
