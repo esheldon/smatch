@@ -252,7 +252,7 @@ class Matcher(object):
         -------
         idx : `list` [`list` [`int`]]
             Each row in idx corresponds to each position in matcher lon/lat.
-            The indices in the row correspond to the indices in query lon/lat.
+            The indices in the row correspond to the indices in matcher lon/lat.
         i1 : array-like
             Array of indices for matcher lon/lat.
             Returned if return_indices is True.
