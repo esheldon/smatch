@@ -310,9 +310,8 @@ class Matcher(object):
             Each row in idx corresponds to a unique (deduplicated) FOF group.
             The indices in the row correspond to the indices in matcher lon/lat.
         """
-        angle = 2.0*np.sin(np.deg2rad(radius)/2.0)
-        idx = self.tree.query_ball_tree(self.tree, angle, eps=eps)
-        # The matching works best when sorting with the most matches first
+        idx = self.query_self(radius, min_match=min_match, eps=eps, return_indices=False)
+        # The FOF grouping works best when sorting with the most matches first
         len_arr = np.array([len(j) for j in idx])
         st = np.argsort(len_arr)[:: -1]
         match_id = np.full(len(idx), -1, dtype=np.int32)
