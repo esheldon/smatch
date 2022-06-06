@@ -93,12 +93,17 @@ class Matcher(object):
         The latitude in degrees.
     """
     def __init__(self, lon, lat):
-        self.lon = lon
-        self.lat = lat
-        coords = _lonlat2vec(lon, lat)
-        # The tree in the match does not need to be balanced, and
-        # turning this off yields significantly faster runtime.
-        self.tree = cKDTree(coords, compact_nodes=False, balanced_tree=False)
+        self.lon = np.atleast_1d(lon)
+        self.lat = np.atleast_1d(lat)
+
+    @property
+    def tree(self):
+        if not hasattr(self, "_tree"):
+            coords = _lonlat2vec(self.lon, self.lat)
+            # The tree in the match does not need to be balanced, and
+            # turning this off yields significantly faster runtime.
+            self._tree = cKDTree(coords, compact_nodes=False, balanced_tree=False)
+        return self._tree
 
     def query_knn(
         self, lon, lat, k=1, distance_upper_bound=None, eps=0,
@@ -247,7 +252,7 @@ class Matcher(object):
         -------
         idx : `list` [`list` [`int`]]
             Each row in idx corresponds to each position in matcher lon/lat.
-            The indices in the row correspond to the indices in query lon/lat.
+            The indices in the row correspond to the indices in matcher lon/lat.
         i1 : array-like
             Array of indices for matcher lon/lat.
             Returned if return_indices is True.
@@ -260,7 +265,55 @@ class Matcher(object):
         """
         angle = 2.0*np.sin(np.deg2rad(radius)/2.0)
         idx = self.tree.query_ball_tree(self.tree, angle, eps=eps)
-        # The matching works best when sorting with the most matches first
+
+        if min_match > 1:
+            for i in range(len(idx)):
+                if len(idx[i]) < min_match:
+                    idx[i] = []
+
+        if return_indices:
+            n_match_per_obj = np.array([len(row) for row in idx])
+            i1 = np.repeat(np.arange(len(idx)), n_match_per_obj)
+            i2 = np.array(functools.reduce(operator.iconcat, idx, []))
+            if len(i1) > 0:
+                ds = sphdist(
+                    self.lon[i1], self.lat[i1],
+                    self.lon[i2], self.lat[i2],
+                )
+            else:
+                ds = np.zeros(0)
+            return idx, i1, i2, ds
+        else:
+            return idx
+
+    def query_groups(self, radius, min_match=1, eps=0.0, return_indices=False):
+        """Match the list of lon/lat to itself, and return groups.
+
+        The return from this method are deduplicated friends-of-friends (FOF)
+        groups.
+
+        Parameters
+        ----------
+        radius : `float`
+            The match radius in degrees.
+        min_match : `int`, optional
+            Minimum number of matches to count as a match.
+            If min_match=1 then all positions will be returned since every
+            position will match at least to itself.
+        eps : `float`, optional
+            If non-zero, the set of returned points are correct to within a
+            fraction precision of `eps` being closer than `radius`.
+
+        Returns
+        -------
+        idx : `list` [`list` [`int`]]
+            Each row in idx corresponds to a unique (deduplicated) FOF group.
+            The indices in the row correspond to the indices in matcher lon/lat.
+        """
+        idx = self.query_self(
+            radius, min_match=min_match, eps=eps, return_indices=False
+        )
+        # The FOF grouping works best when sorting with the most matches first
         len_arr = np.array([len(j) for j in idx])
         st = np.argsort(len_arr)[:: -1]
         match_id = np.full(len(idx), -1, dtype=np.int32)
@@ -269,23 +322,11 @@ class Matcher(object):
             if match_id[j] < 0 and len_arr[j] >= min_match:
                 match_id[idx[j]] = j
                 idx2.append(idx[j])
-        if return_indices:
-            n_match_per_obj = np.array([len(row) for row in idx2])
-            first_match_per_obj = np.array([row[0] for row in idx2])
-            i1 = np.repeat(first_match_per_obj, n_match_per_obj)
-            i2 = np.array(functools.reduce(operator.iconcat, idx2, []))
-            # The distance is arbitrary here.
-            ds = sphdist(
-                self.lon[i1], self.lat[i1],
-                self.lon[i2], self.lat[i2],
-            )
-            return idx2, i1, i2, ds
-        else:
-            return idx2
+        return idx2
 
     def __enter__(self):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         # Clear the memory from the tree
-        del self.tree
+        delattr(self, "_tree")
