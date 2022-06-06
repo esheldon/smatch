@@ -348,3 +348,25 @@ def test_match_group_radius_onlyself():
     assert len(idx) == 1
     assert len(idx[0]) == 1
     assert idx[0][0] == 0
+
+
+def test_match_group_radius_dupes():
+    ra, dec = _gen_sphere_pts(25, 4543)
+    ra = np.concatenate([ra, ra], axis=0)
+    dec = np.concatenate([dec, dec], axis=0)
+    mch = Matcher(ra, dec)
+
+    idx = mch.query_groups(6e4/3600)
+    assert all(len(group) >= 1 for group in idx)
+
+    # All points should be in one and only one group.
+    all_idx = np.concatenate(idx)
+    assert len(all_idx) == len(ra)
+    assert len(np.unique(all_idx)) == len(all_idx)
+
+    # Every point needs to be linked to at least one other point
+    # in the group by less than the radius.
+    for group in idx:
+        for ip in group:
+            sep = sphdist(ra[ip], dec[ip], ra[group], dec[group])
+            assert np.min(sep) < 6e4/3600.

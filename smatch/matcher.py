@@ -310,7 +310,9 @@ class Matcher(object):
             Each row in idx corresponds to a unique (deduplicated) FOF group.
             The indices in the row correspond to the indices in matcher lon/lat.
         """
-        idx = self.query_self(radius, min_match=min_match, eps=eps, return_indices=False)
+        idx = self.query_self(
+            radius, min_match=min_match, eps=eps, return_indices=False
+        )
         # The FOF grouping works best when sorting with the most matches first
         len_arr = np.array([len(j) for j in idx])
         st = np.argsort(len_arr)[:: -1]
