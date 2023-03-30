@@ -301,6 +301,26 @@ def test_matcher_context():
     assert hasattr(mch, "_tree")
 
 
+def test_matcher_context_unbalanced():
+    ra, dec = _gen_sphere_pts(50, 4543)
+    mch = Matcher(ra, dec, balanced=False)
+    assert not hasattr(mch, "_tree")
+    rap, decp = _gen_sphere_pts(100, 454)
+    mch.query_radius(rap, decp, 6e4/3600)
+    assert hasattr(mch, "_tree")
+
+    with Matcher(ra, dec, balanced=False) as mch:
+        rap, decp = _gen_sphere_pts(100, 454)
+        mch.query_radius(rap, decp, 6e4/3600)
+        assert hasattr(mch, "_tree")
+
+    assert not hasattr(mch, "_tree")
+
+    rap, decp = _gen_sphere_pts(100, 454)
+    mch.query_radius(rap, decp, 6e4/3600)
+    assert hasattr(mch, "_tree")
+
+
 def test_match_group_radius():
     ra, dec = _gen_sphere_pts(50, 4543)
     mch = Matcher(ra, dec)

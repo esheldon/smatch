@@ -91,18 +91,19 @@ class Matcher(object):
         The longitude in degrees.
     lat : array-like
         The latitude in degrees.
+    balanced : `bool`, optional
+        Should the underlying tree be balanced?
     """
-    def __init__(self, lon, lat):
+    def __init__(self, lon, lat, balanced=True):
         self.lon = np.atleast_1d(lon)
         self.lat = np.atleast_1d(lat)
+        self._balanced = balanced
 
     @property
     def tree(self):
         if not hasattr(self, "_tree"):
             coords = _lonlat2vec(self.lon, self.lat)
-            # The tree in the match does not need to be balanced, and
-            # turning this off yields significantly faster runtime.
-            self._tree = cKDTree(coords, compact_nodes=False, balanced_tree=False)
+            self._tree = cKDTree(coords, compact_nodes=False, balanced_tree=self._balanced)
         return self._tree
 
     def query_knn(
@@ -210,9 +211,7 @@ class Matcher(object):
             Returned if return_indices is True.
         """
         coords = _lonlat2vec(lon, lat)
-        # The second tree in the match does not need to be balanced, and
-        # turning this off yields significantly faster runtime.
-        qtree = cKDTree(coords, compact_nodes=False, balanced_tree=False)
+        qtree = cKDTree(coords, compact_nodes=False, balanced_tree=self._balanced)
         angle = 2.0*np.sin(np.deg2rad(radius)/2.0)
         idx = self.tree.query_ball_tree(qtree, angle, eps=eps)
 
