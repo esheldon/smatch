@@ -94,10 +94,13 @@ class Matcher(object):
     balanced : `bool`, optional
         Should the underlying tree be balanced?
     """
-    def __init__(self, lon, lat, balanced=True):
+    def __init__(self, lon, lat, balanced=False):
         self.lon = np.atleast_1d(lon)
         self.lat = np.atleast_1d(lat)
         self._balanced = balanced
+
+        if np.any(np.isnan(self.lon) | np.isnan(self.lat)):
+            raise ValueError("At least one NaN found in lon/lat.")
 
     @property
     def tree(self):
@@ -151,6 +154,9 @@ class Matcher(object):
             of dimension `k` added to the end. If `k=1`, then this last dimension
             is squeezed out.
         """
+        if np.any(np.isnan(lon) | np.isnan(lat)):
+            raise ValueError("At least one NaN found in lon/lat.")
+
         if distance_upper_bound is not None:
             maxd = 2*np.sin(np.deg2rad(distance_upper_bound)/2.)
         else:
@@ -210,6 +216,9 @@ class Matcher(object):
             Array of distance (degrees) for each match pair.
             Returned if return_indices is True.
         """
+        if np.any(np.isnan(lon) | np.isnan(lat)):
+            raise ValueError("At least one NaN found in lon/lat.")
+
         coords = _lonlat2vec(lon, lat)
         qtree = cKDTree(coords, compact_nodes=False, balanced_tree=self._balanced)
         angle = 2.0*np.sin(np.deg2rad(radius)/2.0)
