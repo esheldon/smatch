@@ -105,6 +105,16 @@ def test_matcher_knn_maxrad_inf(k):
     assert np.all(idx == 50)
 
 
+def test_matcher_knn_nan():
+    ra, dec = _gen_sphere_pts(50, 4543)
+    mch = Matcher(ra, dec)
+    rap, decp = _gen_sphere_pts(50, 443)
+    rap[0] = np.nan
+    with pytest.raises(ValueError):
+        idx, d = mch.query_knn(
+            rap, decp, distance_upper_bound=1/3600, k=1, return_distances=True)
+
+
 def test_matcher_radius():
     ra, dec = _gen_sphere_pts(50, 4543)
     mch = Matcher(ra, dec)
@@ -160,6 +170,18 @@ def test_match_radius_indices_nomatch():
     assert len(i1) == 0
     assert len(i2) == 0
     assert len(d) == 0
+
+
+def test_match_radius_nan():
+    ra = np.arange(10, dtype=np.float64)
+    dec = np.arange(10, dtype=np.float64)
+
+    mch = Matcher([30.0], [30.0])
+
+    dec[0] = np.nan
+
+    with pytest.raises(ValueError):
+        idx, i1, i2, d = mch.query_radius(ra, dec, 0.2, return_indices=True)
 
 
 def test_sphdist():
@@ -390,3 +412,11 @@ def test_match_group_radius_dupes():
         for ip in group:
             sep = sphdist(ra[ip], dec[ip], ra[group], dec[group])
             assert np.min(sep) < 6e4/3600.
+
+
+def test_matcher_nan():
+    ra, dec = _gen_sphere_pts(25, 4543)
+    dec[0] = np.nan
+
+    with pytest.raises(ValueError):
+        mch = Matcher(ra, dec)
