@@ -94,7 +94,7 @@ class Matcher(object):
     balanced : `bool`, optional
         Should the underlying tree be balanced?
     """
-    def __init__(self, lon, lat, balanced=True):
+    def __init__(self, lon, lat, balanced=False):
         self.lon = np.atleast_1d(lon)
         self.lat = np.atleast_1d(lat)
         self._balanced = balanced
