@@ -64,15 +64,15 @@ def sphdist(lon1, lat1, lon2, lat2):
     vec1 = _lonlat2vec(lon1, lat1)
     vec2 = _lonlat2vec(lon2, lat2)
 
-    cosd = (
-        vec1[..., 0] * vec2[..., 0]
-        + vec1[..., 1] * vec2[..., 1]
-        + vec1[..., 2] * vec2[..., 2]
+    dsq = (
+        (vec1[..., 0] - vec2[..., 0])**2.
+        + (vec1[..., 1] - vec2[..., 1])**2.
+        + (vec1[..., 2] - vec2[..., 2])**2.
     )
 
-    np.clip(cosd, -1, 1, out=cosd)
+    np.clip(dsq, 0, None, out=dsq)
 
-    d = np.rad2deg(np.arccos(cosd))
+    d = np.rad2deg(2.*np.arcsin(0.5*np.sqrt(dsq)))
 
     if is_scalar:
         return np.ravel(d)[0]

@@ -230,6 +230,22 @@ def test_sphdist():
     assert np.allclose(d, [[1, 1.5], [0, 0.5]], atol=2e-6)
 
 
+def test_sphdist_small_angle():
+    # 1 mas in degrees.
+    delta = 1./1000./3600.
+
+    ra1 = 10.234567
+    dec1 = 0.0
+    ra2 = ra1 + delta
+    dec2 = 0.0
+
+    d = sphdist(ra1, dec1, ra2, dec2)
+
+    # The output distance should be non-zero, and equal to the input delta.
+    assert d > 0.0
+    assert np.allclose(d, delta)
+
+
 def test_matcher_self_radius():
     ra, dec = _gen_sphere_pts(50, 4543)
     mch = Matcher(ra, dec)
