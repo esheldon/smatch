@@ -13,7 +13,7 @@ ext = Extension(
 setup(
     name="smatch",
     packages=find_packages(),
-    version="0.10.1",
+    version="0.10.2",
     ext_modules=[ext],
     include_dirs=numpy.get_include(),
 )
