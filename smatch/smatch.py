@@ -25,7 +25,7 @@ def match(ra1, dec1, radius1, ra2, dec2,
         right ascension array 1 in degrees
     dec1: array
         declination array 1 in degrees, same size as ra1
-    radius: array or scalar
+    radius1: array or scalar
         search radius around each point in degrees; can be a scalar
         or same size as ra1/dec1.
 
