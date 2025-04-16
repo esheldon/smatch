@@ -3,6 +3,12 @@ from sys import stderr
 import numpy as np
 from . import _smatch
 
+# Shim to support numpy >= 2 and < 2.0.0.
+if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
+    copy_if_needed = None
+else:
+    copy_if_needed = False
+
 # area 0.013114 square degrees
 NSIDE_DEFAULT=4096
 
@@ -310,8 +316,8 @@ def read_matches(filename):
 
 
 def _get_arrays(ra, dec, radius=None):
-    ra=np.array(ra, ndmin=1, dtype='f8', copy=False)
-    dec=np.array(dec, ndmin=1, dtype='f8', copy=False)
+    ra=np.array(ra, ndmin=1, dtype='f8', copy=copy_if_needed)
+    dec=np.array(dec, ndmin=1, dtype='f8', copy=copy_if_needed)
 
     if ra.size != dec.size:
         mess="ra/dec size mismatch: %d %d"
@@ -319,7 +325,7 @@ def _get_arrays(ra, dec, radius=None):
 
     if radius is not None:
 
-        radarr=np.array(radius, ndmin=1, dtype='f8', copy=False)
+        radarr=np.array(radius, ndmin=1, dtype='f8', copy=copy_if_needed)
 
         if radarr.size != ra.size and radarr.size != 1:
             mess=("radius has size %d but expected either "
