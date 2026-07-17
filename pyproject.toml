@@ -1,3 +1,26 @@
 [build-system]
-requires = ["setuptools>=64", "numpy"]
+requires = [
+    "setuptools>=78",
+    "numpy>=1.7"
+]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "smatch"
+authors = [
+    {name = "Erin Scott Sheldon", email = "erin.sheldon@gmail.com"},
+]
+description = "Code to match points on the sphere using the healpix scheme"
+version = "0.10.2"
+license = "GPL-2.0-or-later"
+license-files = ["LICENSE"]
+readme = "README.md"
+dependencies = ["numpy>=1.7", "scipy"]
+requires-python = ">=3.10"
+
+[project.urls]
+home = "https://github.com/esheldon/smatch"
+
+[tool.setuptools]
+include-package-data = true
+packages = {find = {exclude=["data*"]}}

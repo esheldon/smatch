@@ -1,4 +1,4 @@
-from setuptools import setup, Extension, find_packages
+from setuptools import setup, Extension
 import numpy
 
 
@@ -11,9 +11,6 @@ ext = Extension(
      "smatch/healpix.c"],
 )
 setup(
-    name="smatch",
-    packages=find_packages(),
-    version="0.10.2",
     ext_modules=[ext],
     include_dirs=numpy.get_include(),
 )
