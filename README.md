@@ -108,20 +108,8 @@ Unit Tests
 ----------
 All unit tests should pass
 ```
-import smatch
-smatch.test.test()
-
-testCreate (smatch.test.TestSMatch) ... ok
-testMatch (smatch.test.TestSMatch) ... ok
-testMatch2File (smatch.test.TestSMatch) ... ok
-testMatchScalarsWithScalarRadius (smatch.test.TestSMatch) ... ok
-testMatchSelf (smatch.test.TestSMatch) ... ok
-testMatchSelf2File (smatch.test.TestSMatch) ... ok
-
-----------------------------------------------------------------------
-Ran 3 tests in 0.003s
-
-OK
+> pip install -e .
+> pytest -v smatch 
 ```
 
 Timings
