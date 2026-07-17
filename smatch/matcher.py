@@ -272,7 +272,18 @@ class Matcher(object):
             Returned if return_indices is True.
         """
         angle = 2.0*np.sin(np.deg2rad(radius)/2.0)
-        idx = self.tree.query_ball_tree(self.tree, angle, eps=eps)
+        pairs = self.tree.query_pairs(angle, eps=eps, output_type='ndarray')
+
+        # reconstruct query_ball_tree-style output: each point matches
+        # itself, and each pair appears in both directions
+        n = self.tree.n
+        i_arr = np.concatenate([np.arange(n), pairs[:, 0], pairs[:, 1]])
+        j_arr = np.concatenate([np.arange(n), pairs[:, 1], pairs[:, 0]])
+        order = np.lexsort((j_arr, i_arr))
+        i_arr = i_arr[order]
+        j_arr = j_arr[order]
+        counts = np.bincount(i_arr, minlength=n)
+        idx = [row.tolist() for row in np.split(j_arr, np.cumsum(counts)[:-1])]
 
         if min_match > 1:
             for i in range(len(idx)):
