@@ -1,0 +1,26 @@
+[build-system]
+requires = [
+    "setuptools>=78",
+    "numpy>=1.7"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smatch"
+authors = [
+    {name = "Erin Scott Sheldon", email = "erin.sheldon@gmail.com"},
+]
+description = "A full featured python library to read from and write to FITS files."
+version = "0.10.2"
+license = "GPL-2.0-or-later"
+license-files = ["LICENSE"]
+readme = "README.md"
+dependencies = ["numpy>=1.7"]
+requires-python = ">=3.10"
+
+[project.urls]
+home = "https://github.com/esheldon/smatch"
+
+[tool.setuptools]
+include-package-data = true
+packages = {find = {exclude=["data*"]}}
